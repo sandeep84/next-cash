@@ -61,10 +61,10 @@ export default async function AccountsTable({
                 <th scope="col" className="px-3 py-5 font-medium">
                   Type
                 </th>
-                {/* <th scope="col" className="px-3 py-5 font-medium">
-                  Date
-                </th>
                 <th scope="col" className="px-3 py-5 font-medium">
+                  Balance
+                </th>
+                {/* <th scope="col" className="px-3 py-5 font-medium">
                   Status
                 </th>
                 <th scope="col" className="relative py-3 pl-6 pr-3">
@@ -89,10 +89,10 @@ export default async function AccountsTable({
                   <td className="whitespace-nowrap px-3 py-3">
                     {account.account_type}
                   </td>
-                  {/* <td className="whitespace-nowrap px-3 py-3">
-                    {formatCurrency(account.amount)}
-                  </td>
                   <td className="whitespace-nowrap px-3 py-3">
+                    {formatCurrency(account.balance)}
+                  </td>
+                  {/* <td className="whitespace-nowrap px-3 py-3">
                     {formatDateToLocal(account.date)}
                   </td>
                   <td className="whitespace-nowrap px-3 py-3">

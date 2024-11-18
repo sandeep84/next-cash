@@ -10,6 +10,14 @@ import {
   Revenue,
 } from "./definitions";
 import { formatCurrency } from "./utils";
+import { accounts } from "@prisma/client";
+
+interface AccountNode {
+  guid: string;
+  name: string;
+  account_type: string;
+  balance: number;
+}
 
 export async function fetchRevenue() {
   try {
@@ -93,8 +101,16 @@ export async function fetchFilteredAccounts(
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
   try {
-    const accounts = await prisma.accounts.findMany();
-    // console.log(accounts);
+    const accounts = await prisma.$queryRaw<AccountNode[]>`
+     SELECT
+        accounts.guid,
+        accounts.name,
+        accounts.account_type,
+        COALESCE(SUM(CAST(splits.quantity_num AS Float4) / CAST(splits.quantity_denom AS Float4)), 0) as balance
+      FROM accounts
+      LEFT OUTER JOIN splits ON splits.account_guid = accounts.guid
+      GROUP BY accounts.guid
+    `;
 
     return accounts;
   } catch (error) {

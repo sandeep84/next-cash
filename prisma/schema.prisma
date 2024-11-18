@@ -1,17 +1,11 @@
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-}
-
-model diesel_schema_migrations {
-  version String   @id @db.VarChar(50)
-  run_on  DateTime @default(now()) @db.Timestamp(6)
-
-  @@map("__diesel_schema_migrations")
 }
 
 model accounts {
@@ -26,6 +20,8 @@ model accounts {
   description    String? @db.VarChar(2048)
   hidden         Int?
   placeholder    Int?
+
+  splits         splits[]
 }
 
 model billterms {
@@ -291,6 +287,8 @@ model splits {
   quantity_num    BigInt
   quantity_denom  BigInt
   lot_guid        String?   @db.VarChar(32)
+
+  account         accounts  @relation(fields: [account_guid], references: [guid])
 
   @@index([account_guid], map: "splits_account_guid_index")
   @@index([tx_guid], map: "splits_tx_guid_index")
