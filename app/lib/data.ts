@@ -125,7 +125,7 @@ export async function fetchFilteredAccounts(
       FROM accounts
       LEFT OUTER JOIN splits ON splits.account_guid = accounts.guid
       LEFT JOIN commodities ON accounts.commodity_guid = commodities.guid
-      GROUP BY accounts.guid, commodities.mnemonic 
+      GROUP BY accounts.guid, commodities.mnemonic
     `;
 
     let accountMap: IHash = {};
@@ -142,6 +142,20 @@ export async function fetchFilteredAccounts(
       if (account.parent_guid in accountMap) {
         accountMap[account.parent_guid].children.push(account);
       }
+    });
+
+    accounts.forEach((account) => {
+      account.children.sort(function (a, b) {
+        let x = a.name;
+        let y = b.name;
+        if (x < y) {
+          return -1;
+        }
+        if (x > y) {
+          return 1;
+        }
+        return 0;
+      });
     });
 
     return root_account != undefined ? root_account["children"] : [];
