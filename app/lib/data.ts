@@ -10,13 +10,16 @@ import {
   Revenue,
 } from "./definitions";
 import { formatCurrency } from "./utils";
-import { accounts } from "@prisma/client";
 
-interface AccountNode {
+export interface AccountNode {
   guid: string;
+  parent_guid: string;
   name: string;
   account_type: string;
   balance: number;
+  commodity: string;
+
+  children: AccountNode[];
 }
 
 export async function fetchRevenue() {
@@ -49,7 +52,7 @@ export async function fetchLatestInvoices() {
 
     const latestInvoices = data.rows.map((invoice) => ({
       ...invoice,
-      amount: formatCurrency(invoice.amount),
+      amount: formatCurrency(invoice.amount, "USD"),
     }));
     return latestInvoices;
   } catch (error) {
@@ -78,8 +81,14 @@ export async function fetchCardData() {
 
     const numberOfInvoices = Number(data[0].rows[0].count ?? "0");
     const numberOfCustomers = Number(data[1].rows[0].count ?? "0");
-    const totalPaidInvoices = formatCurrency(data[2].rows[0].paid ?? "0");
-    const totalPendingInvoices = formatCurrency(data[2].rows[0].pending ?? "0");
+    const totalPaidInvoices = formatCurrency(
+      data[2].rows[0].paid ?? "0",
+      "USD"
+    );
+    const totalPendingInvoices = formatCurrency(
+      data[2].rows[0].pending ?? "0",
+      "USD"
+    );
 
     return {
       numberOfCustomers,
@@ -93,6 +102,10 @@ export async function fetchCardData() {
   }
 }
 
+export interface IHash {
+  [details: string]: AccountNode;
+}
+
 const ITEMS_PER_PAGE = 6;
 export async function fetchFilteredAccounts(
   query: string,
@@ -104,15 +117,34 @@ export async function fetchFilteredAccounts(
     const accounts = await prisma.$queryRaw<AccountNode[]>`
      SELECT
         accounts.guid,
+        accounts.parent_guid,
         accounts.name,
         accounts.account_type,
+        commodities.mnemonic as commodity,
         COALESCE(SUM(CAST(splits.quantity_num AS Float4) / CAST(splits.quantity_denom AS Float4)), 0) as balance
       FROM accounts
       LEFT OUTER JOIN splits ON splits.account_guid = accounts.guid
-      GROUP BY accounts.guid
+      LEFT JOIN commodities ON accounts.commodity_guid = commodities.guid
+      GROUP BY accounts.guid, commodities.mnemonic 
     `;
 
-    return accounts;
+    let accountMap: IHash = {};
+    accounts.forEach((account) => {
+      accountMap[account.guid] = account;
+      account.children = [];
+    });
+
+    let root_account: AccountNode | undefined = undefined;
+    accounts.forEach((account) => {
+      if (account.name == "Root Account") {
+        root_account = account;
+      }
+      if (account.parent_guid in accountMap) {
+        accountMap[account.parent_guid].children.push(account);
+      }
+    });
+
+    return root_account != undefined ? root_account["children"] : [];
   } catch (error) {
     console.error("Database Error:", error);
     throw new Error("Failed to fetch accounts.");
@@ -205,8 +237,8 @@ export async function fetchFilteredCustomers(query: string) {
 
     const customers = data.rows.map((customer) => ({
       ...customer,
-      total_pending: formatCurrency(customer.total_pending),
-      total_paid: formatCurrency(customer.total_paid),
+      total_pending: formatCurrency(customer.total_pending, "USD"),
+      total_paid: formatCurrency(customer.total_paid, "USD"),
     }));
 
     return customers;

@@ -1,12 +1,15 @@
 // index.tsx
+import { fetchFilteredAccounts } from "@/app/lib/data";
 import prisma from "@/app/lib/prisma";
 import AccountsTable from "@/app/ui/invoices/table";
 
-export default function Page() {
+export default async function Page() {
+  const accounts = await fetchFilteredAccounts("", 1);
+
   return (
     <>
       <p>Accounts Page</p>
-      <AccountsTable query="" currentPage={1} />
+      <AccountsTable accounts={accounts} />
     </>
   );
 }

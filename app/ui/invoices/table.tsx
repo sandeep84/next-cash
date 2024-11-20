@@ -1,24 +1,101 @@
+"use client";
+
+import { useState } from "react";
 import Image from "next/image";
-import { UpdateInvoice, DeleteInvoice } from "@/app/ui/invoices/buttons";
-import InvoiceStatus from "@/app/ui/invoices/status";
 import { formatDateToLocal, formatCurrency } from "@/app/lib/utils";
-import { fetchFilteredAccounts } from "@/app/lib/data";
+import { AccountNode, fetchFilteredAccounts } from "@/app/lib/data";
+import { ChevronRightIcon, ChevronDownIcon } from "@heroicons/react/24/solid";
 
-export default async function AccountsTable({
-  query,
-  currentPage,
+function AccountRow({
+  account,
+  level,
 }: {
-  query: string;
-  currentPage: number;
+  account: AccountNode;
+  level: number;
 }) {
-  const accounts = await fetchFilteredAccounts(query, currentPage);
+  const [state, setState] = useState("collapsed");
 
+  function click_handler() {
+    if (state == "collapsed") {
+      setState("expanded");
+    } else {
+      setState("collapsed");
+    }
+  }
+
+  return (
+    <>
+      <tr
+        key={"tr-${account.guid}"}
+        className="w-full border-b py-3 text-sm last-of-type:border-none [&:first-child>td:first-child]:rounded-tl-lg [&:first-child>td:last-child]:rounded-tr-lg [&:last-child>td:first-child]:rounded-bl-lg [&:last-child>td:last-child]:rounded-br-lg"
+      >
+        <td className="whitespace-nowrap py-3 pl-6 pr-3">
+          <div className="mb-2 flex items-center">
+            <span className={`w-${level * 4}`}></span>
+            {account.children.length > 0 ? (
+              state == "collapsed" ? (
+                <ChevronRightIcon
+                  className="w-6 size-4"
+                  onClick={click_handler}
+                />
+              ) : (
+                <ChevronDownIcon
+                  className="w-6 size-4"
+                  onClick={click_handler}
+                />
+              )
+            ) : (
+              <span className="w-6"></span>
+            )}
+            <p>{account.name}</p>
+          </div>
+        </td>
+        <td className="whitespace-nowrap px-3 py-3">{account.account_type}</td>
+        <td className="whitespace-nowrap px-3 py-3" suppressHydrationWarning>
+          {formatCurrency(account.balance, account.commodity)}
+        </td>
+      </tr>
+      {state == "expanded" ? (
+        <AccountRows
+          accounts={account.children}
+          level={level + 1}
+        ></AccountRows>
+      ) : undefined}
+    </>
+  );
+}
+
+function AccountRows({
+  accounts,
+  level,
+}: {
+  accounts: Array<AccountNode>;
+  level: number;
+}) {
+  return (
+    <>
+      {accounts?.map((account) => (
+        <AccountRow
+          key={account.guid}
+          account={account}
+          level={level}
+        ></AccountRow>
+      ))}
+    </>
+  );
+}
+
+export default function AccountsTable({
+  accounts,
+}: {
+  accounts: Array<AccountNode>;
+}) {
   return (
     <div className="mt-6 flow-root">
       <div className="inline-block min-w-full align-middle">
         <div className="rounded-lg bg-gray-50 p-2 md:pt-0">
           <div className="md:hidden">
-            {accounts?.map((account) => (
+            {/* {accounts?.map((account) => (
               <div
                 key={account.guid}
                 className="mb-2 w-full rounded-md bg-white p-4"
@@ -32,10 +109,10 @@ export default async function AccountsTable({
                       {account.account_type}
                     </p>
                   </div>
-                  {/* <InvoiceStatus status={account.status} /> */}
+                  <InvoiceStatus status={account.status} />
                 </div>
                 <div className="flex w-full items-center justify-between pt-4">
-                  {/* <div>
+                  <div>
                     <p className="text-xl font-medium">
                       {formatCurrency(account.amount)}
                     </p>
@@ -44,18 +121,15 @@ export default async function AccountsTable({
                   <div className="flex justify-end gap-2">
                     <UpdateInvoice id={account.id} />
                     <DeleteInvoice id={account.id} />
-                  </div> */}
+                  </div>
                 </div>
               </div>
-            ))}
+            ))} */}
           </div>
           <table className="hidden min-w-full text-gray-900 md:table">
             <thead className="rounded-lg text-left text-sm font-normal">
               <tr>
                 <th scope="col" className="px-4 py-5 font-medium sm:pl-6">
-                  Account ID
-                </th>
-                <th scope="col" className="px-3 py-5 font-medium">
                   Account
                 </th>
                 <th scope="col" className="px-3 py-5 font-medium">
@@ -73,39 +147,7 @@ export default async function AccountsTable({
               </tr>
             </thead>
             <tbody className="bg-white">
-              {accounts?.map((account) => (
-                <tr
-                  key={account.guid}
-                  className="w-full border-b py-3 text-sm last-of-type:border-none [&:first-child>td:first-child]:rounded-tl-lg [&:first-child>td:last-child]:rounded-tr-lg [&:last-child>td:first-child]:rounded-bl-lg [&:last-child>td:last-child]:rounded-br-lg"
-                >
-                  <td className="whitespace-nowrap py-3 pl-6 pr-3">
-                    <div className="flex items-center gap-3">
-                      <p>{account.guid}</p>
-                    </div>
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-3">
-                    {account.name}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-3">
-                    {account.account_type}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-3">
-                    {formatCurrency(account.balance)}
-                  </td>
-                  {/* <td className="whitespace-nowrap px-3 py-3">
-                    {formatDateToLocal(account.date)}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-3">
-                    <InvoiceStatus status={account.status} />
-                  </td>
-                  <td className="whitespace-nowrap py-3 pl-6 pr-3">
-                    <div className="flex justify-end gap-3">
-                      <UpdateInvoice id={account.id} />
-                      <DeleteInvoice id={account.id} />
-                    </div>
-                  </td> */}
-                </tr>
-              ))}
+              <AccountRows accounts={accounts} level={0}></AccountRows>
             </tbody>
           </table>
         </div>

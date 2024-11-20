@@ -16,5 +16,9 @@
     "ossp",
     "sidenav",
     "tailwindcss"
-  ] // set as "true" to run 'prettier' last not first
+  ], // set as "true" to run 'prettier' last not first
+
+  "files.associations": {
+    "*.css": "tailwindcss"
+  }
 }
