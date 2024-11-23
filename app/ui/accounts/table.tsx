@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { formatDateToLocal, formatCurrency } from "@/app/lib/utils";
-import { AccountNode, fetchFilteredAccounts } from "@/app/lib/data";
+import { AccountNode } from "@/app/lib/data";
 import { ChevronRightIcon, ChevronDownIcon } from "@heroicons/react/24/solid";
 
 function AccountRow({

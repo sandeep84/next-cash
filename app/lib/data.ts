@@ -1,16 +1,5 @@
-import { sql } from "@vercel/postgres";
 import prisma from "@/app/lib/prisma";
-
-import {
-  CustomerField,
-  CustomersTableType,
-  InvoiceForm,
-  AccountsTable,
-  LatestInvoiceRaw,
-  Revenue,
-} from "./definitions";
-import { formatCurrency } from "./utils";
-import { commodities, prices } from "@prisma/client";
+import { prices } from "@prisma/client";
 
 export class AccountNode {
   guid: string = "";
@@ -91,16 +80,6 @@ export class Book {
     } catch (error) {
       console.error("Database Error:", error);
       throw new Error("Failed to fetch accounts.");
-    }
-  }
-
-  async getCommodities() {
-    try {
-      const commodities = await prisma.commodities.findMany();
-      return commodities;
-    } catch (error) {
-      console.error("Database Error:", error);
-      throw new Error("Failed to fetch commodities.");
     }
   }
 
