@@ -1,11 +1,20 @@
-// index.tsx
-import { Book } from "@/app/lib/data";
-import prisma from "@/app/lib/prisma";
-import AccountsTable from "@/app/ui/accounts/table";
+"use client";
 
-export default async function Page() {
-  const book = new Book();
-  const accounts = await book.init();
+import { getAccounts } from "@/app/lib/book";
+import { AccountNode } from "@/app/lib/data";
+import AccountsTable from "@/app/ui/accounts/table";
+import { useEffect, useState } from "react";
+
+export default function Page() {
+  const [accounts, setAccounts] = useState(Array<AccountNode>());
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setAccounts(await getAccounts());
+    };
+
+    fetchData();
+  }, []);
 
   return (
     <>
