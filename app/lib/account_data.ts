@@ -1,5 +1,5 @@
 import prisma from "@/app/lib/prisma";
-import { prices, commodities } from "@prisma/client";
+import { prices } from "@prisma/client";
 
 export class AccountNode {
   guid: string = "";
@@ -13,8 +13,8 @@ export class AccountNode {
   children: AccountNode[] = [];
 }
 
-export var root_account: AccountNode | undefined = undefined;
-export var price_list: Map<string, Array<prices>> = new Map();
+var root_account: AccountNode | undefined = undefined;
+var price_list: Map<string, Array<prices>> = new Map();
 
 export async function initialiseAccounts() {
   await fetchAccounts();
@@ -28,7 +28,12 @@ export async function initialiseAccounts() {
   return [];
 }
 
-async function fetchAccounts() {
+export async function fetchAccounts() {
+  interface IHash {
+    [details: string]: AccountNode;
+  }
+  let accountMap: IHash = {};
+
   try {
     // First fetch all accounts
     const accounts = await prisma.$queryRaw<AccountNode[]>`
@@ -46,10 +51,6 @@ async function fetchAccounts() {
       GROUP BY accounts.guid, commodities.mnemonic, commodities.guid
     `;
 
-    interface IHash {
-      [details: string]: AccountNode;
-    }
-    let accountMap: IHash = {};
     accounts.forEach((account) => {
       accountMap[account.guid] = account;
       account.children = [];
@@ -81,9 +82,13 @@ async function fetchAccounts() {
     console.error("Database Error:", error);
     throw new Error("Failed to fetch accounts.");
   }
+
+  return accountMap;
 }
 
-async function fetchPrices() {
+export async function fetchPrices() {
+  price_list = new Map();
+
   try {
     const prices = await prisma.prices.findMany({
       orderBy: [
@@ -99,11 +104,12 @@ async function fetchPrices() {
       }
       price_list.get(price.commodity_guid)?.push(price);
     });
-    return price_list;
   } catch (error) {
     console.error("Database Error:", error);
     throw new Error("Failed to fetch prices.");
   }
+
+  return price_list;
 }
 
 function exchangeRate(commodity1_guid: string, commodity2_guid: string) {
@@ -143,7 +149,7 @@ function convertValue(
   return undefined;
 }
 
-function updateBalance(account: AccountNode) {
+export function updateBalance(account: AccountNode) {
   account.children.forEach((child) => {
     updateBalance(child);
 

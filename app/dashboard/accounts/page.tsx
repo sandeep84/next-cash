@@ -1,8 +1,8 @@
 "use client";
 
-import { getAccounts } from "@/app/lib/book";
-import { AccountNode } from "@/app/lib/data";
-import AccountsTable from "@/app/ui/accounts/table";
+import { AccountNode } from "@/app/lib/account_data";
+import { getAccounts } from "@/app/lib/account_server";
+import AccountsTable from "@/app/ui/accounts/accounts_table";
 import { useEffect, useState } from "react";
 
 export default function Page() {
