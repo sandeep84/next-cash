@@ -5,11 +5,12 @@ on: push
 jobs:
   build_and_publish:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v3
-      - name: Build and push the image
+      - name: Build the image
         run: |
           docker login --username sandeep84 --password ${{ secrets.GH_PAT }} ghcr.io
           docker build . --tag ghcr.io/sandeep84/next-cash:latest
-          docker push ghcr.io/sandeep84/next-cash:latest
+      - name: Push the image
+        if: github.ref == 'refs/heads/main'
+        run: docker push ghcr.io/sandeep84/next-cash:latest

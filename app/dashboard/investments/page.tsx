@@ -1,9 +1,8 @@
 "use client";
 
+import { updatePriceList } from "@/app/lib/book";
 import { Button } from "@/app/ui/button";
-import { Book } from "@/app/lib/data";
-import { useEffect, useState } from "react";
-import { fetchAllPrices } from "@/app/lib/book";
+import { useState } from "react";
 
 export default function Page() {
   const [price, setPrice] = useState(0);
@@ -14,7 +13,7 @@ export default function Page() {
       <p>Price is {price}</p>
       <Button
         onClick={async () => {
-          await fetchAllPrices();
+          await updatePriceList();
         }}
       >
         Update prices
