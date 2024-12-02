@@ -13,7 +13,7 @@ export const formatCurrency = (amount: number, mnemonic: string) => {
 
 export const formatDateToLocal = (
   dateStr: string,
-  locale: string = "en-US"
+  locale: string = "en-GB"
 ) => {
   const date = new Date(dateStr);
   const options: Intl.DateTimeFormatOptions = {

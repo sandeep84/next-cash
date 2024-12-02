@@ -1,15 +1,11 @@
 "use server";
 
 import { commodities } from "@prisma/client";
-import { getUUID, initialiseAccounts, root_account } from "./data";
+import { getUUID, initialiseAccounts } from "./account_data";
 import prisma from "./prisma";
 
 export async function getAccounts() {
-  if (root_account == undefined) {
-    return await initialiseAccounts();
-  }
-
-  return root_account.children;
+  return await initialiseAccounts();
 }
 
 export async function updatePriceList() {
