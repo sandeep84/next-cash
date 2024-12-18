@@ -4,13 +4,16 @@ import { useState } from "react";
 import { formatCurrency } from "@/app/lib/utils";
 import { AccountNode } from "@/app/lib/account_data";
 import { ChevronRightIcon, ChevronDownIcon } from "@heroicons/react/24/solid";
+import { root } from "postcss";
 
 function AccountRow({
   account,
+  root_account,
   level,
   use_tr,
 }: {
   account: AccountNode;
+  root_account: AccountNode;
   level: number;
   use_tr: boolean;
 }) {
@@ -51,14 +54,20 @@ function AccountRow({
             <p>{account.name}</p>
           </div>
         </td>
-        <td className="whitespace-nowrap px-3 py-3">{account.account_type}</td>
         <td className="whitespace-nowrap px-3 py-3" suppressHydrationWarning>
-          {formatCurrency(account.balance, account.commodity)}
+          {formatCurrency(account.value, account.commodity)}
+        </td>
+        <td className="whitespace-nowrap px-3 py-3" suppressHydrationWarning>
+          {formatCurrency(
+            account.value_in_root_commodity,
+            root_account.commodity
+          )}
         </td>
       </tr>
       {state == "expanded" ? (
         <AccountRows
           accounts={account.children}
+          root_account={root_account}
           level={level + 1}
           use_tr={use_tr}
         ></AccountRows>
@@ -90,18 +99,26 @@ function AccountRow({
             </div>
             <div className="flex w-full items-end justify-end">
               <p className="text-l font-medium">
-                {formatCurrency(account.balance, account.commodity)}
+                {formatCurrency(account.value, account.commodity)}
               </p>
             </div>
-            <div className="flex w-full items-end justify-end">
-              <p className="text-sm text-gray-500">{account.account_type}</p>
-            </div>
+            {account.commodity != root_account.commodity ? (
+              <div className="flex w-full items-end justify-end">
+                <p className="text-sm text-gray-500">
+                  {formatCurrency(
+                    account.value_in_root_commodity,
+                    root_account.commodity
+                  )}
+                </p>
+              </div>
+            ) : undefined}
           </div>
         </div>
       </div>
       {state == "expanded" ? (
         <AccountRows
           accounts={account.children}
+          root_account={root_account}
           level={level + 1}
           use_tr={use_tr}
         ></AccountRows>
@@ -112,10 +129,12 @@ function AccountRow({
 
 function AccountRows({
   accounts,
+  root_account,
   level,
   use_tr,
 }: {
   accounts: Array<AccountNode>;
+  root_account: AccountNode;
   level: number;
   use_tr: boolean;
 }) {
@@ -125,6 +144,7 @@ function AccountRows({
         <AccountRow
           key={account.guid}
           account={account}
+          root_account={root_account}
           level={level}
           use_tr={use_tr}
         ></AccountRow>
@@ -135,8 +155,10 @@ function AccountRows({
 
 export default function AccountsTable({
   accounts,
+  root_account,
 }: {
   accounts: Array<AccountNode>;
+  root_account: AccountNode;
 }) {
   return (
     <div className="mt-6 flow-root">
@@ -145,6 +167,7 @@ export default function AccountsTable({
           <div className="md:hidden">
             <AccountRows
               accounts={accounts}
+              root_account={root_account}
               level={0}
               use_tr={false}
             ></AccountRows>
@@ -156,10 +179,10 @@ export default function AccountsTable({
                   Account
                 </th>
                 <th scope="col" className="px-3 py-5 font-medium">
-                  Type
+                  Value
                 </th>
                 <th scope="col" className="px-3 py-5 font-medium">
-                  Balance
+                  Value ({root_account.commodity})
                 </th>
                 {/* <th scope="col" className="px-3 py-5 font-medium">
                   Status
@@ -172,6 +195,7 @@ export default function AccountsTable({
             <tbody className="bg-white">
               <AccountRows
                 accounts={accounts}
+                root_account={root_account}
                 level={0}
                 use_tr={true}
               ></AccountRows>

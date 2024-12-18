@@ -10,30 +10,30 @@ export class AccountNode {
   commodity: string = "";
   commodity_guid: string = "";
 
+  value: number = 0.0;
+  value_in_root_commodity: number = 0.0;
+
   children: AccountNode[] = [];
 }
 
-var root_account: AccountNode | undefined = undefined;
-var price_list: Map<string, Array<prices>> = new Map();
+export interface AccountNodeHash {
+  [details: string]: AccountNode;
+}
 
-export async function initialiseAccounts() {
-  await fetchAccounts();
-  await fetchPrices();
+export var root_account: AccountNode;
+export var price_list: Map<string, Array<prices>> = new Map();
+var accountMap: AccountNodeHash = {};
 
+export async function initialiseAccounts(accountMap: AccountNodeHash) {
   if (root_account != undefined) {
-    updateBalance(root_account);
-    return root_account.children;
+    updateValue(root_account, accountMap);
+    return root_account;
   }
 
-  return [];
+  return undefined;
 }
 
 export async function fetchAccounts() {
-  interface IHash {
-    [details: string]: AccountNode;
-  }
-  let accountMap: IHash = {};
-
   try {
     // First fetch all accounts
     const accounts = await prisma.$queryRaw<AccountNode[]>`
@@ -139,9 +139,25 @@ function exchangeRate(commodity1_guid: string, commodity2_guid: string) {
 function convertValue(
   value: number,
   account1: AccountNode,
-  account2: AccountNode
+  account2: AccountNode,
+  accountMap: AccountNodeHash
 ) {
-  let rate = exchangeRate(account1.commodity_guid, account2.commodity_guid);
+  var rate = exchangeRate(account1.commodity_guid, account2.commodity_guid);
+  if (rate == undefined) {
+    try {
+      let parent_account = accountMap[account1.parent_guid];
+      let rate1 = exchangeRate(
+        account1.commodity_guid,
+        parent_account.commodity_guid
+      );
+      let rate2 = exchangeRate(
+        parent_account.commodity_guid,
+        account2.commodity_guid
+      );
+      rate =
+        rate1 != undefined && rate2 != undefined ? rate1 * rate2 : undefined;
+    } catch {}
+  }
   if (rate != undefined) {
     return value * rate;
   }
@@ -149,15 +165,20 @@ function convertValue(
   return undefined;
 }
 
-export function updateBalance(account: AccountNode) {
+export function updateValue(account: AccountNode, accountMap: AccountNodeHash) {
+  account.value = account.balance;
   account.children.forEach((child) => {
-    updateBalance(child);
+    updateValue(child, accountMap);
 
-    let child_balance = convertValue(child.balance, child, account);
-    if (child_balance != undefined) {
-      account.balance += child_balance;
+    let child_value = convertValue(child.value, child, account, accountMap);
+    if (child_value != undefined) {
+      account.value += child_value;
     }
   });
+  if (account.parent_guid in accountMap) {
+    account.value_in_root_commodity =
+      convertValue(account.value, account, root_account, accountMap) ?? 0;
+  }
 }
 
 export function getUUID() {

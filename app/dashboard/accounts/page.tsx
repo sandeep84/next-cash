@@ -6,11 +6,11 @@ import AccountsTable from "@/app/ui/accounts/accounts_table";
 import { useEffect, useState } from "react";
 
 export default function Page() {
-  const [accounts, setAccounts] = useState(Array<AccountNode>());
+  const [root_account, setRootAccount] = useState(new AccountNode());
 
   useEffect(() => {
     const fetchData = async () => {
-      setAccounts(await getAccounts());
+      setRootAccount((await getAccounts()) ?? new AccountNode());
     };
 
     fetchData();
@@ -19,7 +19,10 @@ export default function Page() {
   return (
     <>
       <p>Accounts Page</p>
-      <AccountsTable accounts={accounts} />
+      <AccountsTable
+        accounts={root_account.children}
+        root_account={root_account}
+      />
     </>
   );
 }

@@ -1,11 +1,24 @@
 "use server";
 
 import { commodities } from "@prisma/client";
-import { getUUID, initialiseAccounts } from "./account_data";
+import {
+  fetchAccounts,
+  fetchPrices,
+  getUUID,
+  initialiseAccounts,
+  root_account,
+} from "./account_data";
 import prisma from "./prisma";
 
 export async function getAccounts() {
-  return await initialiseAccounts();
+  let accountMap = await fetchAccounts();
+  await fetchPrices();
+
+  return await initialiseAccounts(accountMap);
+}
+
+export async function getRootAccount() {
+  return root_account;
 }
 
 export async function updatePriceList() {

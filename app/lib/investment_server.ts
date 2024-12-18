@@ -2,10 +2,18 @@
 
 import {
   AccountNode,
+  updateValue,
   fetchAccounts,
   fetchPrices,
-  updateBalance,
+  AccountNodeHash,
 } from "./account_data";
+
+export async function getInvestments() {
+  let accountMap = await fetchAccounts();
+  await fetchPrices();
+
+  return await initializeInvestments(accountMap);
+}
 
 function pruneItems(investments: AccountNode[], account: AccountNode) {
   for (let child of account.children) {
@@ -18,16 +26,11 @@ function pruneItems(investments: AccountNode[], account: AccountNode) {
   }
 }
 
-export async function fetchInvestments() {
+export async function initializeInvestments(accountMap: AccountNodeHash) {
   let investments: AccountNode[] = [];
   const INVESTMENT_TYPES = ["STOCK", "MUTUAL"];
 
   try {
-    // First fetch all accounts
-    const accountMap = await fetchAccounts();
-
-    console.log(`Fetched ${Object.keys(accountMap).length} accounts`);
-
     Object.keys(accountMap).forEach(function (account_guid) {
       if (INVESTMENT_TYPES.includes(accountMap[account_guid].account_type)) {
         // Find the wrapper account which is not a stock or mutual fund
@@ -46,25 +49,14 @@ export async function fetchInvestments() {
           investments.push(accountMap[account_it]);
         }
       }
+
+      for (let investment of investments) {
+        updateValue(investment, accountMap);
+      }
     });
   } catch (error) {
     console.error("Database Error:", error);
     throw new Error("Failed to fetch accounts.");
-  }
-
-  for (let investment of investments) {
-    console.log(investment);
-  }
-
-  return investments;
-}
-
-export async function initialiseInvestments() {
-  let investments = await fetchInvestments();
-  let price_list = await fetchPrices();
-
-  for (let investment of investments) {
-    updateBalance(investment);
   }
 
   return investments;
