@@ -53,6 +53,16 @@ export async function initializeInvestments(accountMap: AccountNodeHash) {
       for (let investment of investments) {
         updateValue(investment, accountMap);
       }
+
+      investments.forEach((account) => {
+        account.children.sort(function (a, b) {
+          return b.value_in_root_commodity - a.value_in_root_commodity;
+        });
+      });
+
+      investments.sort(function (a, b) {
+        return b.value_in_root_commodity - a.value_in_root_commodity;
+      });
     });
   } catch (error) {
     console.error("Database Error:", error);
