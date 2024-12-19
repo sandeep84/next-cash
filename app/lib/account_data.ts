@@ -14,6 +14,10 @@ export class AccountNode {
   value_in_root_commodity: number = 0.0;
 
   children: AccountNode[] = [];
+
+  // Now some investment related fields
+  basis: number = 0;
+  realised_gain: number = 0;
 }
 
 export interface AccountNodeHash {
