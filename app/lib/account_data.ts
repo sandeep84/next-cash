@@ -1,6 +1,7 @@
 import prisma from "@/app/lib/prisma";
 import { commodities, prices, splits } from "@prisma/client";
 import { randomBytes } from "crypto";
+import { convertRate, RateInterval, xirr } from "node-irr";
 
 export const INVESTMENT_TYPES = ["STOCK", "MUTUAL"];
 const MIN_QUANTITY = 1e-5;
@@ -27,6 +28,7 @@ export class AccountNode {
   basis: number = 0;
   realised_gain: number = 0;
   annualised_gain: number = 0;
+  xirr: number = 0;
 }
 
 export interface AccountNodeHash {
@@ -241,7 +243,14 @@ interface InvestmentEntry {
   rate: number;
 }
 
+interface XirrValue {
+  amount: number;
+  date: Date;
+}
+
 export async function updateInvestmentValue(account: AccountNode, accountMap: AccountNodeHash, currencies: Map<string, commodities>) {
+  var xirr_values = new Array<XirrValue>();
+
   if (INVESTMENT_TYPES.includes(account.account_type)) {
     account.basis = 0;
     account.realised_gain = 0;
@@ -251,8 +260,11 @@ export async function updateInvestmentValue(account: AccountNode, accountMap: Ac
 
     for (let split of splits) {
       let quantity = getValue(split.quantity_num, split.quantity_denom);
-      let split_rate = getValue(split.value_num, split.value_denom) / quantity;
+      let split_value = getValue(split.value_num, split.value_denom);
+      let split_rate = split_value / quantity;
       account.currency_guid = split.transaction.currency_guid;
+
+      xirr_values.push({ amount: -split_value, date: split.transaction.post_date ?? new Date(2024, 1, 1) });
 
       if (quantity > 0) {
         // Purchase
@@ -266,8 +278,8 @@ export async function updateInvestmentValue(account: AccountNode, accountMap: Ac
         quantity = -quantity;
 
         while (quantity > MIN_QUANTITY && queue.length > 0 && quantity >= queue[0].units) {
-          // console.log(`${account.name}: Redemption: ${queue[0].units}/${quantity}, ${split_rate} - ${queue[0].rate}`);
           account.realised_gain += queue[0].units * (split_rate - queue[0].rate);
+          // console.log(`${account.name}: Redemption: ${queue[0].units}/${quantity}, ${split_rate} - ${queue[0].rate} => realised_gain=${account.realised_gain}`);
           quantity -= queue[0].units;
           queue.shift(); // remove the oldest item
         }
@@ -278,11 +290,11 @@ export async function updateInvestmentValue(account: AccountNode, accountMap: Ac
             break;
           }
 
-          // console.log(`${account.name}: Redemption: ${quantity}/${quantity}, ${split_rate} - ${queue[0].rate}`);
           // Reduce the number of units in the oldest item accordingly
           queue[0].units -= quantity;
           // And increase the realised gain
           account.realised_gain += quantity * (split_rate - queue[0].rate);
+          // console.log(`${account.name}: Redemption: ${quantity}/${quantity}, ${split_rate} - ${queue[0].rate} => realised_gain=${account.realised_gain}`);
         }
       }
     }
@@ -294,21 +306,38 @@ export async function updateInvestmentValue(account: AccountNode, accountMap: Ac
     // console.log(`${account.name}: basis=${account.basis} realised_gain=${account.realised_gain}`);
   } else {
     account.currency_guid = account.commodity_guid;
+    account.basis = 0;
+    account.realised_gain = 0;
+    account.xirr = 0;
   }
 
   account.currency = currencies.get(account.currency_guid)?.mnemonic ?? "";
   account.value = convertValue(account.balance, account, account.commodity_guid, account.currency_guid, accountMap);
 
+  if (INVESTMENT_TYPES.includes(account.account_type)) {
+    xirr_values.push({ amount: account.value, date: new Date() });
+    account.xirr = convertRate(xirr(xirr_values).rate, RateInterval.Year);
+    // console.log(`${account.name}: XIRR=${account.xirr}`);
+  }
+
+  var investment_children = 0;
   for (let child of account.children) {
     await updateInvestmentValue(child, accountMap, currencies);
 
-    let child_value = convertValue(child.value, child, child.currency_guid, account.commodity_guid, accountMap);
-    if (child_value != undefined) {
-      account.value += child_value;
+    account.value += convertValue(child.value, child, child.currency_guid, account.currency_guid, accountMap);
+    account.basis += convertValue(child.basis, child, child.currency_guid, account.currency_guid, accountMap);
+    account.realised_gain += convertValue(child.realised_gain, child, child.currency_guid, account.currency_guid, accountMap);
+
+    if (child.value > 1 && INVESTMENT_TYPES.includes(child.account_type)) {
+      account.xirr += child.xirr;
+      investment_children++;
     }
   }
 
   account.value_in_root_commodity = convertValue(account.value, account, account.currency_guid, root_account.commodity_guid, accountMap);
+  if (investment_children > 0) {
+    account.xirr /= investment_children;
+  }
 }
 
 export function getUUID() {

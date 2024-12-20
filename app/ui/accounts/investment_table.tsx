@@ -54,16 +54,16 @@ function InvestmentRow({ account, root_account, level, use_tr }: { account: Acco
           {account.realised_gain != undefined ? formatCurrency(account.realised_gain, account.currency) : ""}
         </td>
         <td className="whitespace-nowrap px-3 py-3" suppressHydrationWarning>
-          {account.basis != undefined ? formatCurrency(account.value - account.basis, root_account.commodity) : ""}
+          {account.basis != undefined ? formatCurrency(account.value - account.basis, account.currency) : ""}
         </td>
         <td className="whitespace-nowrap px-3 py-3" suppressHydrationWarning>
           {account.basis != undefined && account.realised_gain != undefined
-            ? formatCurrency(account.value - account.basis + account.realised_gain, root_account.commodity)
+            ? formatCurrency(account.value - account.basis + account.realised_gain, account.currency)
             : ""}
         </td>
-        {/* <td className="whitespace-nowrap px-3 py-3" suppressHydrationWarning>
-          {formatCurrency(account.annualised_gain, root_account.commodity)}
-        </td> */}
+        <td className="whitespace-nowrap px-3 py-3" suppressHydrationWarning>
+          {account.xirr != undefined ? (100 * account.xirr).toFixed(2) + "%" : ""}
+        </td>
       </tr>
       {state == "expanded" ? (
         <InvestmentRows accounts={account.children} root_account={root_account} level={level + 1} use_tr={use_tr}></InvestmentRows>
@@ -118,9 +118,11 @@ function InvestmentRows({
 }) {
   return (
     <>
-      {accounts?.map((account) => (
-        <InvestmentRow key={account.guid} account={account} root_account={root_account} level={level} use_tr={use_tr}></InvestmentRow>
-      ))}
+      {accounts?.map((account) =>
+        account.value > 1 ? (
+          <InvestmentRow key={account.guid} account={account} root_account={root_account} level={level} use_tr={use_tr}></InvestmentRow>
+        ) : undefined
+      )}
     </>
   );
 }
@@ -160,9 +162,9 @@ export default function InvestmentTable({ accounts, root_account }: { accounts: 
                 <th scope="col" className="px-3 py-5 font-medium">
                   Total gain
                 </th>
-                {/* <th scope="col" className="px-3 py-5 font-medium">
-                  Annualised gain
-                </th> */}
+                <th scope="col" className="px-3 py-5 font-medium">
+                  Annualised rate
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white">
