@@ -266,8 +266,8 @@ export async function updateInvestmentValue(account: AccountNode, accountMap: Ac
         quantity = -quantity;
 
         while (quantity > MIN_QUANTITY && queue.length > 0 && quantity >= queue[0].units) {
-          // console.log(`${account.name}: Redemption: ${queue[0].units}/${quantity}, ${split_rate} - ${queue[0].rate}`);
           account.realised_gain += queue[0].units * (split_rate - queue[0].rate);
+          // console.log(`${account.name}: Redemption: ${queue[0].units}/${quantity}, ${split_rate} - ${queue[0].rate} => realised_gain=${account.realised_gain}`);
           quantity -= queue[0].units;
           queue.shift(); // remove the oldest item
         }
@@ -278,11 +278,11 @@ export async function updateInvestmentValue(account: AccountNode, accountMap: Ac
             break;
           }
 
-          // console.log(`${account.name}: Redemption: ${quantity}/${quantity}, ${split_rate} - ${queue[0].rate}`);
           // Reduce the number of units in the oldest item accordingly
           queue[0].units -= quantity;
           // And increase the realised gain
           account.realised_gain += quantity * (split_rate - queue[0].rate);
+          // console.log(`${account.name}: Redemption: ${quantity}/${quantity}, ${split_rate} - ${queue[0].rate} => realised_gain=${account.realised_gain}`);
         }
       }
     }
