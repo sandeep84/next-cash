@@ -290,6 +290,7 @@ model splits {
   lot_guid        String?   @db.VarChar(32)
 
   account         accounts  @relation(fields: [account_guid], references: [guid])
+  transaction     transactions  @relation(fields: [tx_guid], references: [guid])
 
   @@index([account_guid], map: "splits_account_guid_index")
   @@index([tx_guid], map: "splits_tx_guid_index")
@@ -319,6 +320,8 @@ model transactions {
   post_date     DateTime? @db.Timestamp(6)
   enter_date    DateTime? @db.Timestamp(6)
   description   String?   @db.VarChar(2048)
+
+  splits         splits[]
 
   @@index([post_date], map: "tx_post_date_index")
 }

@@ -4,11 +4,8 @@ import { getRootAccount, updatePriceList } from "@/app/lib/account_server";
 import { AccountNode } from "@/app/lib/account_data";
 import { Button } from "@/app/ui/button";
 import { useEffect, useState } from "react";
-import AccountsTable from "@/app/ui/accounts/accounts_table";
-import {
-  getInvestments,
-  initializeInvestments,
-} from "@/app/lib/investment_server";
+import InvestmentTable from "@/app/ui/accounts/investment_table";
+import { getInvestments } from "@/app/lib/investment_server";
 
 export default function Page() {
   const [accounts, setAccounts] = useState(Array<AccountNode>());
@@ -34,7 +31,7 @@ export default function Page() {
         Update prices
       </Button>
 
-      <AccountsTable accounts={accounts} root_account={root_account} />
+      <InvestmentTable accounts={accounts} root_account={root_account} />
     </>
   );
 }
