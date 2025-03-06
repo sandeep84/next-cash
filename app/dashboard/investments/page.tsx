@@ -56,6 +56,9 @@ export default function Page() {
                 legend: {
                   display: false,
                 },
+                colors: {
+                  forceOverride: true,
+                },
               },
             }}
             data={{
