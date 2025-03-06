@@ -34,6 +34,9 @@ export async function updatePriceList() {
 
   for (let commodity of commodities_list) {
     if (commodity.quote_flag) {
+      console.debug(
+        `Fetching latest price for ${commodity.mnemonic} from ${commodity.quote_source}`
+      );
       let price_data = await updatePrice(commodity);
 
       if (price_data != undefined) {
@@ -49,15 +52,15 @@ export async function updatePriceList() {
             value_denom: 10000,
           },
         });
-        // console.log(price_entry);
+        console.debug(price_entry);
+      } else {
+        console.error(`Unable to fetch price for ${commodity.mnemonic}`);
       }
     }
   }
 }
 
 export async function updatePrice(commodity: commodities) {
-  console.log(`Fetching latest price for ${commodity.mnemonic}`);
-
   interface PriceData {
     date: Date;
     price: number;
@@ -81,35 +84,32 @@ export async function updatePrice(commodity: commodities) {
         };
       }
     } catch {
-      console.log(`Error fetching price data for ${commodity.mnemonic}}`);
+      console.error(`Error fetching price data for ${commodity.mnemonic}`);
     }
-    console.log(price_data);
   } else if (
     commodity.quote_flag &&
-    commodity.quote_source == "morningstaruk"
+    (commodity.quote_source == "morningstaruk" ||
+      commodity.quote_source == "mstaruk" ||
+      commodity.quote_source == "ukfunds")
   ) {
     try {
       const mstar_search_regex =
         '<td class="msDataText searchLink"><a href="(.*?)">(.*?)</a></td><td class="msDataText searchIsin"><span>(.*)</span></td>';
-
       const mstar_nav_regex =
         '<td class="line heading">NAV<span class="heading"><br />([0-9]{2}/[0-9]{2}/[0-9]{4})</span>.*([A-Z]{3}).([0-9.]+)';
 
-      const res = await fetch(
+      var res = await fetch(
         `http://www.morningstar.co.uk/uk/funds/SecuritySearchResults.aspx?search=${commodity.mnemonic}`
       );
       if (res.ok) {
         const matches = (await res.text()).match(mstar_search_regex);
         if (matches) {
           let next_url = matches[1];
-          console.log(next_url);
 
-          const res = await fetch(`http://www.morningstar.co.uk${next_url}`);
+          res = await fetch(`http://www.morningstar.co.uk${next_url}`);
           if (res.ok) {
-            console.log(`Fetched from ${next_url} OK`);
             const matches = (await res.text()).match(mstar_nav_regex);
             if (matches) {
-              console.log(`Date: ${matches[1]}`);
               var parts = matches[1].split("/");
 
               price_data = {
@@ -121,13 +121,32 @@ export async function updatePrice(commodity: commodities) {
                 currency: matches[2],
                 price: parseFloat(matches[3]),
               };
-              console.log(price_data);
+            } else {
+              res = await fetch(
+                `http://www.morningstar.co.uk${next_url}&InvestmentType=SA`
+              );
+              if (res.ok) {
+                const matches = (await res.text()).match(mstar_nav_regex);
+                if (matches) {
+                  var parts = matches[1].split("/");
+
+                  price_data = {
+                    date: new Date(
+                      parseInt(parts[2], 10),
+                      parseInt(parts[1], 10) - 1,
+                      parseInt(parts[0], 10)
+                    ),
+                    currency: matches[2],
+                    price: parseFloat(matches[3]),
+                  };
+                }
+              }
             }
           }
         }
       }
     } catch {
-      console.log(`Error fetching price data for ${commodity.mnemonic}}`);
+      console.error(`Error fetching price data for ${commodity.mnemonic}`);
     }
   }
 
