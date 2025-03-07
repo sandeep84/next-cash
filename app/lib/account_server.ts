@@ -40,6 +40,11 @@ export async function updatePriceList() {
       let price_data = await updatePrice(commodity);
 
       if (price_data != undefined) {
+        if (price_data.currency == "GBX") {
+          price_data.price = price_data.price / 100;
+          price_data.currency = "GBP";
+        }
+
         const price_entry = await prisma.prices.create({
           data: {
             guid: getUUID(),
@@ -52,7 +57,7 @@ export async function updatePriceList() {
             value_denom: 10000,
           },
         });
-        console.debug(price_entry);
+        console.log(price_entry);
       } else {
         console.error(`Unable to fetch price for ${commodity.mnemonic}`);
       }
@@ -94,9 +99,11 @@ export async function updatePrice(commodity: commodities) {
   ) {
     try {
       const mstar_search_regex =
-        '<td class="msDataText searchLink"><a href="(.*?)">(.*?)</a></td><td class="msDataText searchIsin"><span>(.*)</span></td>';
-      const mstar_nav_regex =
-        '<td class="line heading">NAV<span class="heading"><br />([0-9]{2}/[0-9]{2}/[0-9]{4})</span>.*([A-Z]{3}).([0-9.]+)';
+        '<td class="msDataText searchLink"><a href="(.*?)">(.*?)</a></td><td class="msDataText search(.+)"><span>(.*)</span></td>';
+      const mstar_nav_regex = [
+        '<td class="line heading">NAV<span class="heading"><br />([0-9]{2}/[0-9]{2}/[0-9]{4})</span>.*([A-Z]{3}).([0-9.]+)',
+        '<td class="line heading">Closing Price<span class="heading"><br />([0-9]{2}/[0-9]{2}/[0-9]{4})</span>.*([A-Z]{3}).([0-9.]+)',
+      ];
 
       var res = await fetch(
         `http://www.morningstar.co.uk/uk/funds/SecuritySearchResults.aspx?search=${commodity.mnemonic}`
@@ -104,29 +111,15 @@ export async function updatePrice(commodity: commodities) {
       if (res.ok) {
         const matches = (await res.text()).match(mstar_search_regex);
         if (matches) {
-          let next_url = matches[1];
+          let next_url_list = [matches[1], `${matches[1]}&InvestmentType=SA`];
 
-          res = await fetch(`http://www.morningstar.co.uk${next_url}`);
-          if (res.ok) {
-            const matches = (await res.text()).match(mstar_nav_regex);
-            if (matches) {
-              var parts = matches[1].split("/");
+          for (const next_url of next_url_list) {
+            res = await fetch(`http://www.morningstar.co.uk${next_url}`);
+            if (res.ok) {
+              var response_text = res.text();
 
-              price_data = {
-                date: new Date(
-                  parseInt(parts[2], 10),
-                  parseInt(parts[1], 10) - 1,
-                  parseInt(parts[0], 10)
-                ),
-                currency: matches[2],
-                price: parseFloat(matches[3]),
-              };
-            } else {
-              res = await fetch(
-                `http://www.morningstar.co.uk${next_url}&InvestmentType=SA`
-              );
-              if (res.ok) {
-                const matches = (await res.text()).match(mstar_nav_regex);
+              for (const regex of mstar_nav_regex) {
+                const matches = (await response_text).match(regex);
                 if (matches) {
                   var parts = matches[1].split("/");
 
@@ -139,6 +132,7 @@ export async function updatePrice(commodity: commodities) {
                     currency: matches[2],
                     price: parseFloat(matches[3]),
                   };
+                  return price_data;
                 }
               }
             }
@@ -148,11 +142,6 @@ export async function updatePrice(commodity: commodities) {
     } catch {
       console.error(`Error fetching price data for ${commodity.mnemonic}`);
     }
-  }
-
-  if (price_data != undefined && price_data.currency == "GBX") {
-    price_data.price = price_data.price / 100;
-    price_data.currency = "GBP";
   }
 
   return price_data;
