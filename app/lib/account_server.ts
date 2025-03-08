@@ -32,12 +32,18 @@ export async function updatePriceList() {
     commodityMap[commodity.mnemonic] = commodity;
   });
 
+  const fs = require("fs");
+  const path = require("path");
+  const os = require("os");
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "nextcash-price-data"));
+  const tempFile = path.join(tempDir, "amfiindia.txt");
+
   for (let commodity of commodities_list) {
     if (commodity.quote_flag) {
       console.debug(
         `Fetching latest price for ${commodity.mnemonic} from ${commodity.quote_source}`
       );
-      let price_data = await updatePrice(commodity);
+      let price_data = await updatePrice(commodity, tempFile);
 
       if (price_data != undefined) {
         if (price_data.currency == "GBX") {
@@ -78,9 +84,12 @@ export async function updatePriceList() {
       }
     }
   }
+
+  fs.unlinkSync(tempFile);
+  fs.rmdirSync(tempDir);
 }
 
-export async function updatePrice(commodity: commodities) {
+export async function updatePrice(commodity: commodities, tempFile: string) {
   interface PriceData {
     date: Date;
     price: number;
@@ -156,6 +165,40 @@ export async function updatePrice(commodity: commodities) {
       }
     } catch {
       console.error(`Error fetching price data for ${commodity.mnemonic}`);
+    }
+  } else if (commodity.quote_flag && commodity.quote_source == "amfiindia") {
+    const fs = require("fs");
+    const readline = require("readline");
+
+    try {
+      fs.statSync(tempFile, (err: { code: number }, _stats: any) => {});
+    } catch (err) {
+      // Fetch the file from AMFI India website
+      await fetch("https://www.amfiindia.com/spages/NAVAll.txt")
+        .then((res) => res.text())
+        .then((body) => {
+          fs.writeFileSync(tempFile, body);
+        });
+    }
+
+    const fileStream = fs.createReadStream(tempFile);
+
+    const rl = readline.createInterface({
+      input: fileStream,
+      crlfDelay: Infinity,
+    });
+
+    for await (const line of rl) {
+      const entries = line.split(";");
+
+      if (entries[1] == commodity.mnemonic) {
+        price_data = {
+          date: new Date(Date.parse(entries[5])),
+          currency: "INR",
+          price: parseFloat(entries[4]),
+        };
+        break;
+      }
     }
   }
 
