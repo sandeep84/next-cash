@@ -45,19 +45,34 @@ export async function updatePriceList() {
           price_data.currency = "GBP";
         }
 
-        const price_entry = await prisma.prices.create({
-          data: {
-            guid: getUUID(),
+        // Check if this price information is already in the database
+        const query = await prisma.prices.findFirst({
+          where: {
             commodity_guid: commodity.guid,
             currency_guid: commodityMap[price_data["currency"]].guid,
             date: price_data["date"],
-            source: "next-cash",
-            type: "last",
             value_num: Math.floor(price_data["price"] * 10000),
             value_denom: 10000,
           },
         });
-        console.log(price_entry);
+
+        if (query == null) {
+          const price_entry = await prisma.prices.create({
+            data: {
+              guid: getUUID(),
+              commodity_guid: commodity.guid,
+              currency_guid: commodityMap[price_data["currency"]].guid,
+              date: price_data["date"],
+              source: "next-cash",
+              type: "last",
+              value_num: Math.floor(price_data["price"] * 10000),
+              value_denom: 10000,
+            },
+          });
+          console.log(price_entry);
+        } else {
+          console.log("Price data already found in database, skipping.");
+        }
       } else {
         console.error(`Unable to fetch price for ${commodity.mnemonic}`);
       }
