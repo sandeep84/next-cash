@@ -124,8 +124,10 @@ export async function updatePrice(commodity: commodities, tempFile: string) {
       commodity.quote_source == "ukfunds")
   ) {
     try {
-      const mstar_search_regex =
-        '<td class="msDataText searchLink"><a href="(.*?)">(.*?)</a></td><td class="msDataText search(.+)"><span>(.*)</span></td>';
+      const mstar_search_regex = new RegExp(
+        '<td class="msDataText searchLink"><a href="(.*?)">(.*?)</a></td><td class="msDataText search(.+)"><span>(.*)</span></td>',
+        "g"
+      );
       const mstar_nav_regex = [
         '<td class="line heading">NAV<span class="heading"><br />([0-9]{2}/[0-9]{2}/[0-9]{4})</span>.*([A-Z]{3}).([0-9.]+)',
         '<td class="line heading">Closing Price<span class="heading"><br />([0-9]{2}/[0-9]{2}/[0-9]{4})</span>.*([A-Z]{3}).([0-9.]+)',
@@ -135,9 +137,26 @@ export async function updatePrice(commodity: commodities, tempFile: string) {
         `http://www.morningstar.co.uk/uk/funds/SecuritySearchResults.aspx?search=${commodity.mnemonic}`
       );
       if (res.ok) {
-        const matches = (await res.text()).match(mstar_search_regex);
-        if (matches) {
-          let next_url_list = [matches[1], `${matches[1]}&InvestmentType=SA`];
+        const matches = Array.from(
+          (await res.text()).matchAll(mstar_search_regex)
+        );
+
+        if (matches.length > 0) {
+          // Pick the first match by default
+          var best_match = 1;
+
+          // Look for other matches which include the root currency in their name
+          for (let match_idx = 0; match_idx < matches.length; match_idx++) {
+            if (matches[match_idx].includes("GBP")) {
+              best_match = match_idx;
+              break;
+            }
+          }
+
+          let next_url_list = [
+            matches[best_match][1],
+            `${matches[best_match][1]}&InvestmentType=SA`,
+          ];
 
           for (const next_url of next_url_list) {
             res = await fetch(`http://www.morningstar.co.uk${next_url}`);
@@ -204,7 +223,7 @@ export async function updatePrice(commodity: commodities, tempFile: string) {
     }
   } else if (commodity.quote_flag && commodity.quote_source == "currency") {
     var base_currency: string;
-    if (root_account == undefined) {
+    if (root_account == undefined || root_account.currency == undefined) {
       base_currency = "GBP";
     } else {
       base_currency = root_account.currency;
