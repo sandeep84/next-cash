@@ -85,8 +85,10 @@ export async function updatePriceList() {
     }
   }
 
-  fs.unlinkSync(tempFile);
-  fs.rmdirSync(tempDir);
+  try {
+    fs.unlinkSync(tempFile);
+    fs.rmdirSync(tempDir);
+  } catch (err) {}
 }
 
 export async function updatePrice(commodity: commodities, tempFile: string) {
@@ -199,6 +201,27 @@ export async function updatePrice(commodity: commodities, tempFile: string) {
         };
         break;
       }
+    }
+  } else if (commodity.quote_flag && commodity.quote_source == "currency") {
+    var base_currency: string;
+    if (root_account == undefined) {
+      base_currency = "GBP";
+    } else {
+      base_currency = root_account.currency;
+    }
+
+    if (commodity.mnemonic != base_currency) {
+      await fetch(
+        `https://api.frankfurter.dev/v1/latest?base=${commodity.mnemonic}&symbols=${base_currency}`
+      )
+        .then((resp) => resp.json())
+        .then((data) => {
+          price_data = {
+            date: new Date(Date.parse(data.date)),
+            currency: data.base,
+            price: parseFloat(data.rates[base_currency]),
+          };
+        });
     }
   }
 
