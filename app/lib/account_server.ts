@@ -32,12 +32,18 @@ export async function updatePriceList() {
     commodityMap[commodity.mnemonic] = commodity;
   });
 
+  const fs = require("fs");
+  const path = require("path");
+  const os = require("os");
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "nextcash-price-data"));
+  const tempFile = path.join(tempDir, "amfiindia.txt");
+
   for (let commodity of commodities_list) {
     if (commodity.quote_flag) {
       console.debug(
         `Fetching latest price for ${commodity.mnemonic} from ${commodity.quote_source}`
       );
-      let price_data = await updatePrice(commodity);
+      let price_data = await updatePrice(commodity, tempFile);
 
       if (price_data != undefined) {
         if (price_data.currency == "GBX") {
@@ -78,9 +84,14 @@ export async function updatePriceList() {
       }
     }
   }
+
+  try {
+    fs.unlinkSync(tempFile);
+    fs.rmdirSync(tempDir);
+  } catch (err) {}
 }
 
-export async function updatePrice(commodity: commodities) {
+export async function updatePrice(commodity: commodities, tempFile: string) {
   interface PriceData {
     date: Date;
     price: number;
@@ -156,6 +167,61 @@ export async function updatePrice(commodity: commodities) {
       }
     } catch {
       console.error(`Error fetching price data for ${commodity.mnemonic}`);
+    }
+  } else if (commodity.quote_flag && commodity.quote_source == "amfiindia") {
+    const fs = require("fs");
+    const readline = require("readline");
+
+    try {
+      fs.statSync(tempFile, (err: { code: number }, _stats: any) => {});
+    } catch (err) {
+      // Fetch the file from AMFI India website
+      await fetch("https://www.amfiindia.com/spages/NAVAll.txt")
+        .then((res) => res.text())
+        .then((body) => {
+          fs.writeFileSync(tempFile, body);
+        });
+    }
+
+    const fileStream = fs.createReadStream(tempFile);
+
+    const rl = readline.createInterface({
+      input: fileStream,
+      crlfDelay: Infinity,
+    });
+
+    for await (const line of rl) {
+      const entries = line.split(";");
+
+      if (entries[1] == commodity.mnemonic) {
+        price_data = {
+          date: new Date(Date.parse(entries[5])),
+          currency: "INR",
+          price: parseFloat(entries[4]),
+        };
+        break;
+      }
+    }
+  } else if (commodity.quote_flag && commodity.quote_source == "currency") {
+    var base_currency: string;
+    if (root_account == undefined) {
+      base_currency = "GBP";
+    } else {
+      base_currency = root_account.currency;
+    }
+
+    if (commodity.mnemonic != base_currency) {
+      await fetch(
+        `https://api.frankfurter.dev/v1/latest?base=${commodity.mnemonic}&symbols=${base_currency}`
+      )
+        .then((resp) => resp.json())
+        .then((data) => {
+          price_data = {
+            date: new Date(Date.parse(data.date)),
+            currency: data.base,
+            price: parseFloat(data.rates[base_currency]),
+          };
+        });
     }
   }
 
