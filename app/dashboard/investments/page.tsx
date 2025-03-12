@@ -1,11 +1,11 @@
 "use client";
 
-import { getRootAccount, updatePriceList } from "@/app/lib/account_server";
+import { getRootAccount } from "@/app/lib/account_server";
 import { AccountNode } from "@/app/lib/account_data";
 import { Button } from "@/app/ui/button";
 import { useEffect, useState } from "react";
 import InvestmentTable from "@/app/ui/accounts/investment_table";
-import { getInvestments } from "@/app/lib/investment_server";
+import { getInvestments, updatePriceList } from "@/app/lib/investment_server";
 import { Card } from "@/app/ui/dashboard/cards";
 import { formatCurrency } from "@/app/lib/utils";
 import "chart.js/auto";
@@ -43,13 +43,13 @@ export default function Page() {
       >
         Update prices
       </Button>
-      <div className="grid grid-flow-col grid-rows-1 mb-2 h-200 rounded-md bg-white p-4">
+      <div className="grid grid-flow-col grid-rows-1 mb-2 h-60 rounded-md bg-white p-4">
         <Card
           title="Investments"
           value={formatCurrency(total_value, root_account.commodity)}
           type="collected"
         ></Card>
-        <div className="h-60 w-100">
+        <div className="h-50 w-100">
           <Doughnut
             options={{
               plugins: {

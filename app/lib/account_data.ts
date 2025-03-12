@@ -149,7 +149,9 @@ export async function fetchSplits(account_guid: string) {
     return splits;
   } catch (error) {
     console.error("Database Error:", error);
-    throw new Error(`Failed to fetch splits for account ${accountMap[account_guid].name}.`);
+    throw new Error(
+      `Failed to fetch splits for account ${accountMap[account_guid].name}.`
+    );
   }
 }
 
@@ -200,7 +202,13 @@ function exchangeRate(commodity1_guid: string, commodity2_guid: string) {
   return undefined;
 }
 
-function convertValue(value: number, account1: AccountNode, source_commodity_guid: string, target_currency_guid: string, accountMap: AccountNodeHash) {
+function convertValue(
+  value: number,
+  account1: AccountNode,
+  source_commodity_guid: string,
+  target_currency_guid: string,
+  accountMap: AccountNodeHash
+) {
   var rate;
   if (source_commodity_guid == target_currency_guid) {
     rate = 1.0;
@@ -211,9 +219,16 @@ function convertValue(value: number, account1: AccountNode, source_commodity_gui
   if (rate == undefined) {
     try {
       let parent_account = accountMap[account1.parent_guid];
-      let rate1 = exchangeRate(source_commodity_guid, parent_account.commodity_guid);
-      let rate2 = exchangeRate(parent_account.commodity_guid, target_currency_guid);
-      rate = rate1 != undefined && rate2 != undefined ? rate1 * rate2 : undefined;
+      let rate1 = exchangeRate(
+        source_commodity_guid,
+        parent_account.commodity_guid
+      );
+      let rate2 = exchangeRate(
+        parent_account.commodity_guid,
+        target_currency_guid
+      );
+      rate =
+        rate1 != undefined && rate2 != undefined ? rate1 * rate2 : undefined;
     } catch {}
   }
   if (rate != undefined) {
@@ -228,13 +243,26 @@ export function updateValue(account: AccountNode, accountMap: AccountNodeHash) {
   account.children.forEach((child) => {
     updateValue(child, accountMap);
 
-    let child_value = convertValue(child.value, child, child.commodity_guid, account.commodity_guid, accountMap);
+    let child_value = convertValue(
+      child.value,
+      child,
+      child.commodity_guid,
+      account.commodity_guid,
+      accountMap
+    );
     if (child_value != undefined) {
       account.value += child_value;
     }
   });
   if (account.parent_guid in accountMap) {
-    account.value_in_root_commodity = convertValue(account.value, account, account.commodity_guid, root_account.commodity_guid, accountMap) ?? 0;
+    account.value_in_root_commodity =
+      convertValue(
+        account.value,
+        account,
+        account.commodity_guid,
+        root_account.commodity_guid,
+        accountMap
+      ) ?? 0;
   }
 }
 
@@ -248,7 +276,11 @@ interface XirrValue {
   date: Date;
 }
 
-export async function updateInvestmentValue(account: AccountNode, accountMap: AccountNodeHash, currencies: Map<string, commodities>) {
+export async function updateInvestmentValue(
+  account: AccountNode,
+  accountMap: AccountNodeHash,
+  currencies: Map<string, commodities>
+) {
   var xirr_values = new Array<XirrValue>();
 
   if (INVESTMENT_TYPES.includes(account.account_type)) {
@@ -264,7 +296,10 @@ export async function updateInvestmentValue(account: AccountNode, accountMap: Ac
       let split_rate = split_value / quantity;
       account.currency_guid = split.transaction.currency_guid;
 
-      xirr_values.push({ amount: -split_value, date: split.transaction.post_date ?? new Date(2024, 1, 1) });
+      xirr_values.push({
+        amount: -split_value,
+        date: split.transaction.post_date ?? new Date(2024, 1, 1),
+      });
 
       if (quantity > 0) {
         // Purchase
@@ -277,8 +312,13 @@ export async function updateInvestmentValue(account: AccountNode, accountMap: Ac
         // Redemption
         quantity = -quantity;
 
-        while (quantity > MIN_QUANTITY && queue.length > 0 && quantity >= queue[0].units) {
-          account.realised_gain += queue[0].units * (split_rate - queue[0].rate);
+        while (
+          quantity > MIN_QUANTITY &&
+          queue.length > 0 &&
+          quantity >= queue[0].units
+        ) {
+          account.realised_gain +=
+            queue[0].units * (split_rate - queue[0].rate);
           // console.log(`${account.name}: Redemption: ${queue[0].units}/${quantity}, ${split_rate} - ${queue[0].rate} => realised_gain=${account.realised_gain}`);
           quantity -= queue[0].units;
           queue.shift(); // remove the oldest item
@@ -286,7 +326,9 @@ export async function updateInvestmentValue(account: AccountNode, accountMap: Ac
 
         if (quantity > MIN_QUANTITY) {
           if (queue.length == 0) {
-            console.error(`ERROR: Too many redemptions found for account ${account.name}`);
+            console.error(
+              `ERROR: Too many redemptions found for account ${account.name}`
+            );
             break;
           }
 
@@ -312,7 +354,13 @@ export async function updateInvestmentValue(account: AccountNode, accountMap: Ac
   }
 
   account.currency = currencies.get(account.currency_guid)?.mnemonic ?? "";
-  account.value = convertValue(account.balance, account, account.commodity_guid, account.currency_guid, accountMap);
+  account.value = convertValue(
+    account.balance,
+    account,
+    account.commodity_guid,
+    account.currency_guid,
+    accountMap
+  );
 
   if (INVESTMENT_TYPES.includes(account.account_type)) {
     xirr_values.push({ amount: account.value, date: new Date() });
@@ -324,9 +372,27 @@ export async function updateInvestmentValue(account: AccountNode, accountMap: Ac
   for (let child of account.children) {
     await updateInvestmentValue(child, accountMap, currencies);
 
-    account.value += convertValue(child.value, child, child.currency_guid, account.currency_guid, accountMap);
-    account.basis += convertValue(child.basis, child, child.currency_guid, account.currency_guid, accountMap);
-    account.realised_gain += convertValue(child.realised_gain, child, child.currency_guid, account.currency_guid, accountMap);
+    account.value += convertValue(
+      child.value,
+      child,
+      child.currency_guid,
+      account.currency_guid,
+      accountMap
+    );
+    account.basis += convertValue(
+      child.basis,
+      child,
+      child.currency_guid,
+      account.currency_guid,
+      accountMap
+    );
+    account.realised_gain += convertValue(
+      child.realised_gain,
+      child,
+      child.currency_guid,
+      account.currency_guid,
+      accountMap
+    );
 
     if (child.value > 1 && INVESTMENT_TYPES.includes(child.account_type)) {
       account.xirr += child.xirr;
@@ -334,16 +400,14 @@ export async function updateInvestmentValue(account: AccountNode, accountMap: Ac
     }
   }
 
-  account.value_in_root_commodity = convertValue(account.value, account, account.currency_guid, root_account.commodity_guid, accountMap);
+  account.value_in_root_commodity = convertValue(
+    account.value,
+    account,
+    account.currency_guid,
+    root_account.commodity_guid,
+    accountMap
+  );
   if (investment_children > 0) {
     account.xirr /= investment_children;
   }
-}
-
-export function getUUID() {
-  let uuid = "";
-  for (var i = 0; i < 32; i++) {
-    uuid += ((Math.random() * 16) | 0).toString(16);
-  }
-  return uuid;
 }
