@@ -1,4 +1,4 @@
-import { updatePriceList } from "@/app/lib/account_server";
+import { updatePriceList } from "./app/lib/investment_server";
 
 const nodeCron = require("node-cron");
 

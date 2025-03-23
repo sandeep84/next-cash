@@ -18,6 +18,7 @@ function AccountRow({
   use_tr: boolean;
 }) {
   const [state, setState] = useState("collapsed");
+  const [isHovering, setIsHovering] = useState(false);
 
   function click_handler() {
     if (state == "collapsed") {
@@ -27,6 +28,14 @@ function AccountRow({
     }
   }
 
+  const handleMouseOver = () => {
+    setIsHovering(true);
+  };
+
+  const handleMouseOut = () => {
+    setIsHovering(false);
+  };
+
   return use_tr ? (
     <>
       <tr
@@ -34,7 +43,11 @@ function AccountRow({
         className="w-full border-b py-3 text-sm last-of-type:border-none [&:first-child>td:first-child]:rounded-tl-lg [&:first-child>td:last-child]:rounded-tr-lg [&:last-child>td:first-child]:rounded-bl-lg [&:last-child>td:last-child]:rounded-br-lg"
       >
         <td className="whitespace-nowrap py-3 pl-6 pr-3">
-          <div className="mb-2 flex items-center">
+          <div
+            className="mb-2 flex items-center"
+            onMouseOver={handleMouseOver}
+            onMouseOut={handleMouseOut}
+          >
             <span className={`w-${level * 4}`}></span>
             {account.children.length > 0 ? (
               state == "collapsed" ? (
@@ -52,6 +65,12 @@ function AccountRow({
               <span className="w-6"></span>
             )}
             <p>{account.name}</p>
+            {isHovering && (
+              <div className="flex">
+                <span className="w-2"></span>
+                <button>⋮</button>
+              </div>
+            )}
           </div>
         </td>
         <td className="whitespace-nowrap px-3 py-3" suppressHydrationWarning>
