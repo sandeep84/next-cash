@@ -24,7 +24,7 @@ function SplitsTable({ account }: { account: AccountNode }) {
           {Object.entries(account.split_entries).map(([key, split_entry]) => (
             <tr key={split_entry.guid}>
               <td key={split_entry.guid + "date"}>
-                {split_entry.transaction.post_date.toLocaleDateString()}
+                {split_entry.transaction.post_date?.toLocaleDateString()}
               </td>
               <td key={split_entry.guid + "description"}>
                 {split_entry.transaction.description}

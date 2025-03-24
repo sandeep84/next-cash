@@ -1,7 +1,7 @@
 // This file contains type definitions for your data.
 // It describes the shape of the data, and what data type each property should accept.
 
-import { splits } from "@prisma/client";
+import { splits, transactions } from "@prisma/client";
 
 export const INVESTMENT_TYPES = ["STOCK", "MUTUAL"];
 export const MIN_QUANTITY = 1e-5;
@@ -30,7 +30,7 @@ export class AccountNode {
   annualised_gain: number = 0;
   xirr: number = 0;
 
-  split_entries: Array<splits> = [];
+  split_entries: Array<{ transaction: transactions } & splits> = [];
 }
 
 export interface AccountNodeHash {
