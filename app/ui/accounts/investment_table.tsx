@@ -2,11 +2,20 @@
 
 import { useState } from "react";
 import { formatCurrency } from "@/app/lib/utils";
-import { AccountNode } from "@/app/lib/account_data";
 import { ChevronRightIcon, ChevronDownIcon } from "@heroicons/react/24/solid";
-import { root } from "postcss";
+import { AccountNode } from "@/app/lib/definitions";
 
-function InvestmentRow({ account, root_account, level, use_tr }: { account: AccountNode; root_account: AccountNode; level: number; use_tr: boolean }) {
+function InvestmentRow({
+  account,
+  root_account,
+  level,
+  use_tr,
+}: {
+  account: AccountNode;
+  root_account: AccountNode;
+  level: number;
+  use_tr: boolean;
+}) {
   const [state, setState] = useState("collapsed");
 
   function click_handler() {
@@ -28,9 +37,15 @@ function InvestmentRow({ account, root_account, level, use_tr }: { account: Acco
             <span className={`w-${level * 4}`}></span>
             {account.children.length > 0 ? (
               state == "collapsed" ? (
-                <ChevronRightIcon className="w-6 size-4" onClick={click_handler} />
+                <ChevronRightIcon
+                  className="w-6 size-4"
+                  onClick={click_handler}
+                />
               ) : (
-                <ChevronDownIcon className="w-6 size-4" onClick={click_handler} />
+                <ChevronDownIcon
+                  className="w-6 size-4"
+                  onClick={click_handler}
+                />
               )
             ) : (
               <span className="w-6"></span>
@@ -45,28 +60,47 @@ function InvestmentRow({ account, root_account, level, use_tr }: { account: Acco
           {formatCurrency(account.value, account.currency)}
         </td>
         <td className="whitespace-nowrap px-3 py-3" suppressHydrationWarning>
-          {formatCurrency(account.value_in_root_commodity, root_account.commodity)}
+          {formatCurrency(
+            account.value_in_root_commodity,
+            root_account.commodity
+          )}
         </td>
         <td className="whitespace-nowrap px-3 py-3" suppressHydrationWarning>
-          {account.basis != undefined ? formatCurrency(account.basis, account.currency) : ""}
-        </td>
-        <td className="whitespace-nowrap px-3 py-3" suppressHydrationWarning>
-          {account.realised_gain != undefined ? formatCurrency(account.realised_gain, account.currency) : ""}
-        </td>
-        <td className="whitespace-nowrap px-3 py-3" suppressHydrationWarning>
-          {account.basis != undefined ? formatCurrency(account.value - account.basis, account.currency) : ""}
-        </td>
-        <td className="whitespace-nowrap px-3 py-3" suppressHydrationWarning>
-          {account.basis != undefined && account.realised_gain != undefined
-            ? formatCurrency(account.value - account.basis + account.realised_gain, account.currency)
+          {account.basis != undefined
+            ? formatCurrency(account.basis, account.currency)
             : ""}
         </td>
         <td className="whitespace-nowrap px-3 py-3" suppressHydrationWarning>
-          {account.xirr != undefined ? (100 * account.xirr).toFixed(2) + "%" : ""}
+          {account.realised_gain != undefined
+            ? formatCurrency(account.realised_gain, account.currency)
+            : ""}
+        </td>
+        <td className="whitespace-nowrap px-3 py-3" suppressHydrationWarning>
+          {account.basis != undefined
+            ? formatCurrency(account.value - account.basis, account.currency)
+            : ""}
+        </td>
+        <td className="whitespace-nowrap px-3 py-3" suppressHydrationWarning>
+          {account.basis != undefined && account.realised_gain != undefined
+            ? formatCurrency(
+                account.value - account.basis + account.realised_gain,
+                account.currency
+              )
+            : ""}
+        </td>
+        <td className="whitespace-nowrap px-3 py-3" suppressHydrationWarning>
+          {account.xirr != undefined
+            ? (100 * account.xirr).toFixed(2) + "%"
+            : ""}
         </td>
       </tr>
       {state == "expanded" ? (
-        <InvestmentRows accounts={account.children} root_account={root_account} level={level + 1} use_tr={use_tr}></InvestmentRows>
+        <InvestmentRows
+          accounts={account.children}
+          root_account={root_account}
+          level={level + 1}
+          use_tr={use_tr}
+        ></InvestmentRows>
       ) : undefined}
     </>
   ) : (
@@ -78,9 +112,15 @@ function InvestmentRow({ account, root_account, level, use_tr }: { account: Acco
               <span className={`w-${level * 4}`}></span>
               {account.children.length > 0 ? (
                 state == "collapsed" ? (
-                  <ChevronRightIcon className="w-6 size-4" onClick={click_handler} />
+                  <ChevronRightIcon
+                    className="w-6 size-4"
+                    onClick={click_handler}
+                  />
                 ) : (
-                  <ChevronDownIcon className="w-6 size-4" onClick={click_handler} />
+                  <ChevronDownIcon
+                    className="w-6 size-4"
+                    onClick={click_handler}
+                  />
                 )
               ) : (
                 <span className="w-6"></span>
@@ -88,18 +128,30 @@ function InvestmentRow({ account, root_account, level, use_tr }: { account: Acco
               <p className="text-l font-medium">{account.name}</p>
             </div>
             <div className="flex w-full items-end justify-end">
-              <p className="text-l font-medium">{formatCurrency(account.value, account.commodity)}</p>
+              <p className="text-l font-medium">
+                {formatCurrency(account.value, account.commodity)}
+              </p>
             </div>
             {account.commodity != root_account.commodity ? (
               <div className="flex w-full items-end justify-end">
-                <p className="text-sm text-gray-500">{formatCurrency(account.value_in_root_commodity, root_account.commodity)}</p>
+                <p className="text-sm text-gray-500">
+                  {formatCurrency(
+                    account.value_in_root_commodity,
+                    root_account.commodity
+                  )}
+                </p>
               </div>
             ) : undefined}
           </div>
         </div>
       </div>
       {state == "expanded" ? (
-        <InvestmentRows accounts={account.children} root_account={root_account} level={level + 1} use_tr={use_tr}></InvestmentRows>
+        <InvestmentRows
+          accounts={account.children}
+          root_account={root_account}
+          level={level + 1}
+          use_tr={use_tr}
+        ></InvestmentRows>
       ) : undefined}
     </>
   );
@@ -120,20 +172,37 @@ function InvestmentRows({
     <>
       {accounts?.map((account) =>
         account.value > 1 ? (
-          <InvestmentRow key={account.guid} account={account} root_account={root_account} level={level} use_tr={use_tr}></InvestmentRow>
+          <InvestmentRow
+            key={account.guid}
+            account={account}
+            root_account={root_account}
+            level={level}
+            use_tr={use_tr}
+          ></InvestmentRow>
         ) : undefined
       )}
     </>
   );
 }
 
-export default function InvestmentTable({ accounts, root_account }: { accounts: Array<AccountNode>; root_account: AccountNode }) {
+export default function InvestmentTable({
+  accounts,
+  root_account,
+}: {
+  accounts: Array<AccountNode>;
+  root_account: AccountNode;
+}) {
   return (
     <div className="mt-6 flow-root">
       <div className="inline-block min-w-full align-middle">
         <div className="rounded-lg bg-gray-50 p-2 md:pt-0">
           <div className="md:hidden">
-            <InvestmentRows accounts={accounts} root_account={root_account} level={0} use_tr={false}></InvestmentRows>
+            <InvestmentRows
+              accounts={accounts}
+              root_account={root_account}
+              level={0}
+              use_tr={false}
+            ></InvestmentRows>
           </div>
           <table className="hidden min-w-full text-gray-900 md:table">
             <thead className="rounded-lg text-left text-sm font-normal">
@@ -168,7 +237,12 @@ export default function InvestmentTable({ accounts, root_account }: { accounts: 
               </tr>
             </thead>
             <tbody className="bg-white">
-              <InvestmentRows accounts={accounts} root_account={root_account} level={0} use_tr={true}></InvestmentRows>
+              <InvestmentRows
+                accounts={accounts}
+                root_account={root_account}
+                level={0}
+                use_tr={true}
+              ></InvestmentRows>
             </tbody>
           </table>
         </div>

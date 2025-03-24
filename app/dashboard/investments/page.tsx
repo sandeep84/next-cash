@@ -1,7 +1,6 @@
 "use client";
 
-import { getRootAccount } from "@/app/lib/account_server";
-import { AccountNode } from "@/app/lib/account_data";
+import { fetchAccountMap, getRootAccount } from "@/app/lib/account_server";
 import { Button } from "@/app/ui/button";
 import { useEffect, useState } from "react";
 import InvestmentTable from "@/app/ui/accounts/investment_table";
@@ -10,6 +9,7 @@ import { Card } from "@/app/ui/dashboard/cards";
 import { formatCurrency } from "@/app/lib/utils";
 import "chart.js/auto";
 import { Doughnut } from "react-chartjs-2";
+import { AccountNode } from "@/app/lib/definitions";
 
 export default function Page() {
   const [accounts, setAccounts] = useState(Array<AccountNode>());
@@ -18,9 +18,14 @@ export default function Page() {
 
   useEffect(() => {
     const fetchData = async () => {
+      const accountMap = await fetchAccountMap();
       var accs = await getInvestments();
       setAccounts(accs);
-      setRootAccount(await getRootAccount());
+
+      const ra = await getRootAccount(accountMap);
+      if (ra != undefined) {
+        setRootAccount(ra);
+      }
 
       var value = 0;
       accs?.map((account) => {
@@ -38,7 +43,7 @@ export default function Page() {
       <p>Investments Page</p>
       <Button
         onClick={async () => {
-          await updatePriceList();
+          await updatePriceList(root_account.commodity);
         }}
       >
         Update prices

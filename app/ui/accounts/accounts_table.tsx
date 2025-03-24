@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { formatCurrency } from "@/app/lib/utils";
-import { AccountNode } from "@/app/lib/account_data";
 import { ChevronRightIcon, ChevronDownIcon } from "@heroicons/react/24/solid";
 import { root } from "postcss";
+import { AccountNode } from "@/app/lib/definitions";
 
 function AccountRow({
   account,

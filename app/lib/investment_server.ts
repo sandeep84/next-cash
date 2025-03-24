@@ -1,21 +1,27 @@
 "use server";
 
-import { commodities } from "@prisma/client";
+import { commodities, prices } from "@prisma/client";
+import prisma from "./prisma";
+import {
+  fetchAccountMap,
+  fetchCurrencies,
+  fetchPrices,
+  fetchSplits,
+  getRootAccount,
+} from "./account_server";
 import {
   AccountNode,
-  updateInvestmentValue,
-  fetchAccounts,
-  fetchPrices,
   AccountNodeHash,
   INVESTMENT_TYPES,
-  fetchCurrencies,
-} from "./account_data";
-import prisma from "./prisma";
-import { getRootAccount } from "./account_server";
+  InvestmentEntry,
+  MIN_QUANTITY,
+  XirrValue,
+} from "./definitions";
+import { convertValue, getValue } from "./account_data";
+import { convertRate, RateInterval, xirr } from "node-irr";
 
 export async function getInvestments() {
-  let accountMap = await fetchAccounts();
-
+  let accountMap = await fetchAccountMap();
   return await initializeInvestments(accountMap);
 }
 
@@ -32,6 +38,7 @@ function pruneItems(investments: AccountNode[], account: AccountNode) {
 
 export async function initializeInvestments(accountMap: AccountNodeHash) {
   let investments: AccountNode[] = [];
+  const root_account = await getRootAccount(accountMap);
 
   try {
     let price_list = await fetchPrices();
@@ -57,8 +64,16 @@ export async function initializeInvestments(accountMap: AccountNodeHash) {
       }
     }
 
-    for (let investment of investments) {
-      await updateInvestmentValue(investment, accountMap, currencies);
+    if (root_account != undefined) {
+      for (let investment of investments) {
+        await updateInvestmentValue(
+          investment,
+          accountMap,
+          currencies,
+          root_account.commodity_guid,
+          price_list
+        );
+      }
     }
 
     investments.forEach((account) => {
@@ -86,7 +101,7 @@ export async function getUUID() {
   return uuid;
 }
 
-export async function updatePriceList() {
+export async function updatePriceList(base_currency: string) {
   const commodities_list = await prisma.commodities.findMany();
 
   interface IHash {
@@ -108,7 +123,7 @@ export async function updatePriceList() {
       console.debug(
         `Fetching latest price for ${commodity.mnemonic} from ${commodity.quote_source}`
       );
-      let price_data = await updatePrice(commodity, tempFile);
+      let price_data = await updatePrice(commodity, tempFile, base_currency);
 
       if (price_data != undefined) {
         if (price_data.currency == "GBX") {
@@ -156,7 +171,11 @@ export async function updatePriceList() {
   } catch (err) {}
 }
 
-export async function updatePrice(commodity: commodities, tempFile: string) {
+export async function updatePrice(
+  commodity: commodities,
+  tempFile: string,
+  base_currency: string
+) {
   interface PriceData {
     date: Date;
     price: number;
@@ -287,14 +306,6 @@ export async function updatePrice(commodity: commodities, tempFile: string) {
       }
     }
   } else if (commodity.quote_flag && commodity.quote_source == "currency") {
-    var base_currency: string;
-    var root_account = await getRootAccount();
-    if (root_account == undefined || root_account.currency == undefined) {
-      base_currency = "GBP";
-    } else {
-      base_currency = root_account.currency;
-    }
-
     if (commodity.mnemonic != base_currency) {
       await fetch(
         `https://api.frankfurter.dev/v1/latest?base=${commodity.mnemonic}&symbols=${base_currency}`
@@ -311,4 +322,153 @@ export async function updatePrice(commodity: commodities, tempFile: string) {
   }
 
   return price_data;
+}
+
+export async function updateInvestmentValue(
+  account: AccountNode,
+  accountMap: AccountNodeHash,
+  currencies: Map<string, commodities>,
+  root_commodity_guid: string,
+  price_list: Map<string, Array<prices>>
+) {
+  var xirr_values = new Array<XirrValue>();
+
+  if (INVESTMENT_TYPES.includes(account.account_type)) {
+    account.basis = 0;
+    account.realised_gain = 0;
+
+    let splits = await fetchSplits(account.guid);
+    var queue = new Array<InvestmentEntry>();
+
+    for (let split of splits) {
+      let quantity = getValue(split.quantity_num, split.quantity_denom);
+      let split_value = getValue(split.value_num, split.value_denom);
+      let split_rate = split_value / quantity;
+      account.currency_guid = split.transaction.currency_guid;
+
+      xirr_values.push({
+        amount: -split_value,
+        date: split.transaction.post_date ?? new Date(2024, 1, 1),
+      });
+
+      if (quantity > 0) {
+        // Purchase
+        queue.push({
+          units: quantity,
+          rate: split_rate,
+        });
+        // console.log(`${account.name}: Purchase: ${quantity}, ${split_rate}`);
+      } else {
+        // Redemption
+        quantity = -quantity;
+
+        while (
+          quantity > MIN_QUANTITY &&
+          queue.length > 0 &&
+          quantity >= queue[0].units
+        ) {
+          account.realised_gain +=
+            queue[0].units * (split_rate - queue[0].rate);
+          // console.log(`${account.name}: Redemption: ${queue[0].units}/${quantity}, ${split_rate} - ${queue[0].rate} => realised_gain=${account.realised_gain}`);
+          quantity -= queue[0].units;
+          queue.shift(); // remove the oldest item
+        }
+
+        if (quantity > MIN_QUANTITY) {
+          if (queue.length == 0) {
+            console.error(
+              `ERROR: Too many redemptions found for account ${account.name}`
+            );
+            break;
+          }
+
+          // Reduce the number of units in the oldest item accordingly
+          queue[0].units -= quantity;
+          // And increase the realised gain
+          account.realised_gain += quantity * (split_rate - queue[0].rate);
+          // console.log(`${account.name}: Redemption: ${quantity}/${quantity}, ${split_rate} - ${queue[0].rate} => realised_gain=${account.realised_gain}`);
+        }
+      }
+    }
+
+    for (let item of queue) {
+      account.basis += item.units * item.rate;
+    }
+
+    // console.log(`${account.name}: basis=${account.basis} realised_gain=${account.realised_gain}`);
+  } else {
+    account.currency_guid = account.commodity_guid;
+    account.basis = 0;
+    account.realised_gain = 0;
+    account.xirr = 0;
+  }
+
+  account.currency = currencies.get(account.currency_guid)?.mnemonic ?? "";
+  account.value = convertValue(
+    account.balance,
+    account,
+    account.commodity_guid,
+    account.currency_guid,
+    accountMap,
+    price_list
+  );
+
+  if (INVESTMENT_TYPES.includes(account.account_type)) {
+    xirr_values.push({ amount: account.value, date: new Date() });
+    account.xirr = convertRate(xirr(xirr_values).rate, RateInterval.Year);
+    // console.log(`${account.name}: XIRR=${account.xirr}`);
+  }
+
+  var investment_children = 0;
+  for (let child of account.children) {
+    await updateInvestmentValue(
+      child,
+      accountMap,
+      currencies,
+      root_commodity_guid,
+      price_list
+    );
+
+    account.value += convertValue(
+      child.value,
+      child,
+      child.currency_guid,
+      account.currency_guid,
+      accountMap,
+      price_list
+    );
+    account.basis += convertValue(
+      child.basis,
+      child,
+      child.currency_guid,
+      account.currency_guid,
+      accountMap,
+      price_list
+    );
+    account.realised_gain += convertValue(
+      child.realised_gain,
+      child,
+      child.currency_guid,
+      account.currency_guid,
+      accountMap,
+      price_list
+    );
+
+    if (child.value > 1 && INVESTMENT_TYPES.includes(child.account_type)) {
+      account.xirr += child.xirr;
+      investment_children++;
+    }
+  }
+
+  account.value_in_root_commodity = convertValue(
+    account.value,
+    account,
+    account.currency_guid,
+    root_commodity_guid,
+    accountMap,
+    price_list
+  );
+  if (investment_children > 0) {
+    account.xirr /= investment_children;
+  }
 }
