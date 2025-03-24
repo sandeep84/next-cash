@@ -6,7 +6,7 @@ import { ChevronRightIcon, ChevronDownIcon } from "@heroicons/react/24/solid";
 import { root } from "postcss";
 import { AccountNode } from "@/app/lib/definitions";
 
-function AccountRow({
+function TaxReportAccountEntry({
   account,
   root_account,
   level,
@@ -160,13 +160,13 @@ function AccountRows({
   return (
     <>
       {accounts?.map((account) => (
-        <AccountRow
+        <TaxReportAccountEntry
           key={account.guid}
           account={account}
           root_account={root_account}
           level={level}
           use_tr={use_tr}
-        ></AccountRow>
+        ></TaxReportAccountEntry>
       ))}
     </>
   );

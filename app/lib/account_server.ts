@@ -43,6 +43,7 @@ export async function fetchAccountMap() {
     accounts.forEach((account) => {
       accountMap[account.guid] = account;
       account.children = [];
+      account.split_entries = [];
     });
 
     accounts.forEach((account) => {
