@@ -3,7 +3,25 @@
 
 import { splits, transactions } from "@prisma/client";
 
+export const ROOT_TYPES = ["ROOT"];
+export const ASSET_TYPES = [
+  "RECEIVABLE",
+  "MUTUAL",
+  "CASH",
+  "ASSET",
+  "BANK",
+  "STOCK",
+];
+export const LIABILITY_TYPES = ["CREDIT", "LIABILITY", "PAYABLE"];
+export const INCOME_TYPES = ["INCOME"];
+export const EXPENSE_TYPES = ["EXPENSE"];
+export const TRADING_TYPES = ["TRADING"];
+export const EQUITY_TYPES = ["EQUITY"];
 export const INVESTMENT_TYPES = ["STOCK", "MUTUAL"];
+
+export const INCEXP_TYPES = INCOME_TYPES.concat(EXPENSE_TYPES);
+export const ASSETLIAB_TYPES = ASSET_TYPES.concat(LIABILITY_TYPES);
+
 export const MIN_QUANTITY = 1e-5;
 
 export class AccountNode {
@@ -30,7 +48,7 @@ export class AccountNode {
   annualised_gain: number = 0;
   xirr: number = 0;
 
-  split_entries: Array<{ transaction: transactions } & splits> = [];
+  transaction_entries: Array<{ splits: splits[] } & transactions> = [];
 }
 
 export interface AccountNodeHash {

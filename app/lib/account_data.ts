@@ -1,5 +1,10 @@
-import { prices } from "@prisma/client";
-import { AccountNode, AccountNodeHash } from "./definitions";
+import { prices, splits, transactions } from "@prisma/client";
+import {
+  AccountNode,
+  AccountNodeHash,
+  ASSETLIAB_TYPES,
+  INCEXP_TYPES,
+} from "./definitions";
 
 export function getValue(num: bigint, denom: bigint) {
   return Number((num * BigInt(10000)) / denom) / 10000;
@@ -105,4 +110,36 @@ export function updateValue(
         price_list
       ) ?? 0;
   }
+}
+
+export function getSourceAccount(
+  accountMap: AccountNodeHash,
+  account: AccountNode,
+  transaction: { splits: splits[] } & transactions
+) {
+  var source_accounts = [];
+
+  for (let other_split of transaction.splits) {
+    let other_account = accountMap[other_split.account_guid];
+
+    if (
+      other_account != undefined &&
+      other_account != account &&
+      INCEXP_TYPES.includes(account.account_type) &&
+      ASSETLIAB_TYPES.includes(other_account.account_type)
+    ) {
+      source_accounts.push(other_account);
+      console.log(`Other account ${other_account.name}`);
+    }
+  }
+
+  // Preferably return mutual-fund or stock accounts as the source account
+  for (let source_account of source_accounts) {
+    if (source_account.account_type in ["MUTUAL", "STOCK"]) {
+      return account;
+    }
+  }
+
+  //  Otherwise, just return the first account in the list
+  return source_accounts[0];
 }
