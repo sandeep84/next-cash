@@ -44,6 +44,8 @@ export async function fetchAccountMap() {
       accountMap[account.guid] = account;
       account.children = [];
       account.transaction_entries = [];
+      account.value = 0;
+      account.value_in_root_commodity = 0;
     });
 
     accounts.forEach((account) => {

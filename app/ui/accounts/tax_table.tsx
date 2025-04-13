@@ -69,14 +69,6 @@ function TransactionsTable({
 
   return source_account_map.size > 0 ? (
     <>
-      <p
-        className={`text-${
-          16 - level
-        }xl font-extrabold leading-none tracking-tight text-gray-900 dark:text-white`}
-      >
-        {account.name}
-      </p>
-      <p className="mb-2">Sub-total: {account.value}</p>
       <table
         key={account.guid + "_splits"}
         className="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400"
@@ -154,8 +146,18 @@ function TaxReportAccountEntry({
   root_account: AccountNode;
   level: number;
 }) {
-  return (
+  return account.value != 0 ? (
     <div className="mb-4">
+      <p
+        className={`text-${
+          16 - level
+        }xl font-extrabold leading-none tracking-tight text-gray-900 dark:text-white`}
+      >
+        {account.name}
+      </p>
+      <p className="mb-2">
+        Sub-total: {formatCurrency(account.value, account.commodity)}
+      </p>
       <TransactionsTable
         accountMap={accountMap}
         account={account}
@@ -169,7 +171,7 @@ function TaxReportAccountEntry({
         level={level + 1}
       ></TaxReportAccount>
     </div>
-  );
+  ) : undefined;
 }
 
 function TaxReportAccount({
@@ -221,18 +223,22 @@ export default function TaxReport({
 }) {
   return (
     <>
-      {accounts?.map((account) => (
-        <>
-          <h1>{reportType(account.account_type)}</h1>
-          <TaxReportAccountEntry
-            key={account.guid}
-            accountMap={accountMap}
-            account={account}
-            root_account={root_account}
-            level={0}
-          ></TaxReportAccountEntry>
-        </>
-      ))}
+      {accounts?.map((account) =>
+        Math.abs(account.value) > 0 ? (
+          <>
+            <h1 className="mb-4 text-4xl font-extrabold leading-none tracking-tight text-gray-900 md:text-5xl lg:text-6xl dark:text-white">
+              {reportType(account.account_type)}
+            </h1>
+            <TaxReportAccountEntry
+              key={account.guid}
+              accountMap={accountMap}
+              account={account}
+              root_account={root_account}
+              level={0}
+            ></TaxReportAccountEntry>
+          </>
+        ) : undefined
+      )}
     </>
   );
 }
