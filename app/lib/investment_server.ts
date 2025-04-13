@@ -119,7 +119,7 @@ export async function updatePriceList(base_currency: string) {
   const tempFile = path.join(tempDir, "amfiindia.txt");
 
   for (let commodity of commodities_list) {
-    if (commodity.quote_flag) {
+    if (commodity.quote_flag && commodity.mnemonic != base_currency) {
       console.debug(
         `Fetching latest price for ${commodity.mnemonic} from ${commodity.quote_source}`
       );
@@ -227,11 +227,11 @@ export async function updatePrice(
 
         if (matches.length > 0) {
           // Pick the first match by default
-          var best_match = 1;
+          var best_match = 0;
 
           // Look for other matches which include the root currency in their name
           for (let match_idx = 0; match_idx < matches.length; match_idx++) {
-            if (matches[match_idx].includes("GBP")) {
+            if (matches[match_idx].includes(base_currency)) {
               best_match = match_idx;
               break;
             }
