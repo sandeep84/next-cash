@@ -1,6 +1,7 @@
 "use server";
 
 import { fetchAccountMap, getRootAccount } from "./account_server";
+import { AccountNode } from "./definitions";
 import prisma from "./prisma";
 
 export async function summariseTransactions(start_date: Date, end_date: Date) {
@@ -16,8 +17,6 @@ export async function summariseTransactions(start_date: Date, end_date: Date) {
       },
     },
   });
-
-  // console.log(result);
 
   let accountMap = await fetchAccountMap();
 

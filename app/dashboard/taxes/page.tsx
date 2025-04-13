@@ -19,14 +19,8 @@ export default function Page() {
         new Date("2024-04-05")
       );
 
-      // if (root_acc != undefined) {
-      //   setRootAccount(root_acc);
-      // }
-
-      for (const account_guid in accountMap) {
-        if (accountMap[account_guid].name == "Income") {
-          setRootAccount(accountMap[account_guid]);
-        }
+      if (root_acc != undefined) {
+        setRootAccount(root_acc);
       }
 
       setAccountMap(accountMap);
@@ -36,13 +30,10 @@ export default function Page() {
   }, []);
 
   return (
-    <>
-      <p>Tax report</p>
-      <TaxReport
-        accountMap={accountMap}
-        accounts={root_account.children}
-        root_account={root_account}
-      ></TaxReport>
-    </>
+    <TaxReport
+      accountMap={accountMap}
+      accounts={root_account.children}
+      root_account={root_account}
+    ></TaxReport>
   );
 }

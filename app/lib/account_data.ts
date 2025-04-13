@@ -129,7 +129,6 @@ export function getSourceAccount(
       ASSETLIAB_TYPES.includes(other_account.account_type)
     ) {
       source_accounts.push(other_account);
-      console.log(`Other account ${other_account.name}`);
     }
   }
 
