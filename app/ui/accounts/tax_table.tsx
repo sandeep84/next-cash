@@ -3,17 +3,55 @@
 import { formatCurrency } from "@/app/lib/utils";
 import { AccountNode, AccountNodeHash } from "@/app/lib/definitions";
 import { getSourceAccount, getValue } from "@/app/lib/account_data";
-import { splits, transactions } from "@prisma/client";
+import { prices, splits, transactions } from "@prisma/client";
+
+function getExchangeRate(
+  account: AccountNode,
+  date: Date,
+  base_currency_guid: string,
+  price_list: Map<string, Array<prices>>
+) {
+  var exchange_rate = undefined;
+  var month = new Date(date);
+  month.setDate(1);
+
+  if (account.commodity_guid == base_currency_guid) {
+    exchange_rate = 1;
+  } else if (price_list.has(account.commodity_guid)) {
+    for (let price of price_list.get(account.commodity_guid)) {
+      if (
+        ["user:hmrc", "user:xe", "invalid"].includes(price.source) &&
+        price.currency_guid == base_currency_guid &&
+        month.getFullYear() == price.date.getFullYear() &&
+        month.getMonth() == price.date.getMonth()
+      ) {
+        exchange_rate = getValue(price.value_num, price.value_denom);
+        console.log(
+          `Found exchange rate for ${
+            account.commodity
+          } -> GBP: ${exchange_rate} on ${price.date.toLocaleDateString()} (${month.toLocaleDateString()}) -> ${
+            price.source
+          }`
+        );
+        // break;
+      }
+    }
+  }
+
+  return exchange_rate;
+}
 
 function TransactionsTable({
   accountMap,
   account,
-  base_currency,
+  root_account,
+  price_list,
   level,
 }: {
   accountMap: AccountNodeHash;
   account: AccountNode;
-  base_currency: string;
+  root_account: AccountNode;
+  price_list: Map<string, Array<prices>>;
   level: number;
 }) {
   var source_account_map = new Map<
@@ -79,8 +117,8 @@ function TransactionsTable({
             <td>Description</td>
             <td>Value</td>
             <td>Sub-total</td>
-            <td>Value ({base_currency})</td>
-            <td>Sub-total ({base_currency})</td>
+            <td>Value ({root_account.commodity})</td>
+            <td>Sub-total ({root_account.commodity})</td>
           </tr>
         </thead>
         <tbody>
@@ -121,6 +159,22 @@ function TransactionsTable({
                             source_account_entry.commodity
                           )}
                         </td>
+                        <td key="sub_total"></td>
+                        <td key="value_in_base">
+                          {formatCurrency(
+                            getValue(
+                              value.split.value_num,
+                              value.split.value_denom
+                            ) *
+                              getExchangeRate(
+                                account,
+                                value.transaction.post_date,
+                                root_account.commodity_guid,
+                                price_list
+                              ),
+                            root_account.commodity
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
@@ -139,11 +193,13 @@ function TaxReportAccountEntry({
   accountMap,
   account,
   root_account,
+  price_list,
   level,
 }: {
   accountMap: AccountNodeHash;
   account: AccountNode;
   root_account: AccountNode;
+  price_list: Map<string, Array<prices>>;
   level: number;
 }) {
   return account.value != 0 ? (
@@ -161,13 +217,15 @@ function TaxReportAccountEntry({
       <TransactionsTable
         accountMap={accountMap}
         account={account}
-        base_currency={root_account.commodity}
+        root_account={root_account}
+        price_list={price_list}
         level={level}
       ></TransactionsTable>
       <TaxReportAccount
         accountMap={accountMap}
         accounts={account.children}
         root_account={root_account}
+        price_list={price_list}
         level={level + 1}
       ></TaxReportAccount>
     </div>
@@ -178,21 +236,24 @@ function TaxReportAccount({
   accountMap,
   accounts,
   root_account,
+  price_list,
   level,
 }: {
   accountMap: AccountNodeHash;
   accounts: Array<AccountNode>;
   root_account: AccountNode;
+  price_list: Map<string, Array<prices>>;
   level: number;
 }) {
   return (
     <>
       {accounts?.map((account) => (
         <TaxReportAccountEntry
-          key={account.guid}
+          key={account.guid + "_subentry"}
           accountMap={accountMap}
           account={account}
           root_account={root_account}
+          price_list={price_list}
           level={level}
         ></TaxReportAccountEntry>
       ))}
@@ -216,17 +277,22 @@ export default function TaxReport({
   accountMap,
   accounts,
   root_account,
+  price_list,
 }: {
   accountMap: AccountNodeHash;
   accounts: Array<AccountNode>;
   root_account: AccountNode;
+  price_list: Map<string, Array<prices>>;
 }) {
   return (
     <>
       {accounts?.map((account) =>
-        Math.abs(account.value) > 0 ? (
+        account.value != 0 ? (
           <>
-            <h1 className="mb-4 text-4xl font-extrabold leading-none tracking-tight text-gray-900 md:text-5xl lg:text-6xl dark:text-white">
+            <h1
+              key={account.guid + "_head"}
+              className="mb-4 text-4xl font-extrabold leading-none tracking-tight text-gray-900 md:text-5xl lg:text-6xl dark:text-white"
+            >
               {reportType(account.account_type)}
             </h1>
             <TaxReportAccountEntry
@@ -234,6 +300,7 @@ export default function TaxReport({
               accountMap={accountMap}
               account={account}
               root_account={root_account}
+              price_list={price_list}
               level={0}
             ></TaxReportAccountEntry>
           </>
